@@ -1,6 +1,7 @@
 const { SHA256 } = require("crypto-js");
 const fs = require("fs");
 const crypto = require("crypto");
+const forge = require("node-forge");
 
 class Block {
   constructor(index, previousHash, timestamp, data, nonce, hash) {
@@ -14,7 +15,9 @@ class Block {
 }
 
 const calculateHash = (index, previousHash, timestamp, data, nonce) => {
-  return SHA256(index + previousHash + timestamp + data + nonce).toString();
+  return SHA256(
+    index + previousHash + timestamp + JSON.stringify(data) + nonce
+  ).toString();
 };
 
 const createGenesisBlock = () => {
@@ -40,7 +43,7 @@ const usedCertificateNumbers = new Set();
 
 const loadBlockchain = () => {
   try {
-    const data = fs.readFileSync("blockchain.json");
+    const data = fs.readFileSync("blockchain.json", "utf8");
     blockchain = JSON.parse(data);
   } catch (err) {
     blockchain = [createGenesisBlock()];
@@ -48,89 +51,137 @@ const loadBlockchain = () => {
 };
 
 const saveBlockchain = () => {
-  fs.writeFileSync("blockchain.json", JSON.stringify(blockchain, null, 2));
+  try {
+    fs.writeFileSync(
+      "blockchain.json",
+      JSON.stringify(blockchain, null, 1),
+      "utf8"
+    );
+  } catch (err) {
+    console.error("Error saving blockchain:", err);
+  }
 };
 
 loadBlockchain();
 
+let privateKey, publicKey;
+
 const generateKeyPair = () => {
-  const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: {
-      type: "spki",
-      format: "pem",
-    },
-    privateKeyEncoding: {
-      type: "pkcs8",
-      format: "pem",
-    },
-  });
+  if (fs.existsSync("private_key.pem") && fs.existsSync("public_key.pem")) {
+    privateKey = fs.readFileSync("private_key.pem", "utf8");
+    publicKey = fs.readFileSync("public_key.pem", "utf8");
+  } else {
+    const keys = forge.pki.rsa.generateKeyPair(1024);
 
-  // Simpan kunci pribadi dengan aman (misalnya, dalam file terenkripsi)
-  fs.writeFileSync("private_key.pem", privateKey, "utf8");
+    privateKey = forge.pki.privateKeyToPem(keys.privateKey);
+    publicKey = forge.pki.publicKeyToPem(keys.publicKey);
 
-  // Kunci publik dapat digunakan dalam blockchain
-  return publicKey;
+    try {
+      fs.writeFileSync("private_key.pem", privateKey, "utf8");
+      fs.writeFileSync("public_key.pem", publicKey, "utf8");
+    } catch (err) {
+      console.error("Error saving keys:", err);
+    }
+  }
+
+  return { privateKey, publicKey };
 };
 
-const addBlock = (data, userPublicKey) => {
+generateKeyPair();
+
+const mineBlock = (index, previousHash, timestamp, data) => {
+  let nonce = 0;
+  let hash = "";
+  const targetPrefix = "0000";
+
+  while (!hash.startsWith(targetPrefix)) {
+    nonce++;
+    hash = calculateHash(index, previousHash, timestamp, data, nonce);
+  }
+
+  return { nonce, hash };
+};
+
+const addBlock = (data) => {
   if (usedCertificateNumbers.has(data.number)) {
-    console.error("Nomor sertifikat sudah digunakan sebelumnya.");
+    console.error("Certificate number has been used.");
     return null;
   }
 
   const previousBlock = blockchain[blockchain.length - 1];
   const index = previousBlock.index + 1;
   const timestamp = Date.now().toString();
-  let nonce = 0;
-  let hash;
 
-  do {
-    hash = calculateHash(
-      index,
-      previousBlock.hash,
-      timestamp,
-      JSON.stringify(data),
-      nonce.toString()
-    );
-    nonce++;
-  } while (!hash.startsWith("0000"));
+  // Menambang (mine) blok
+  const { nonce, hash } = mineBlock(index, previousBlock.hash, timestamp, data);
+
+  const dataToSign = JSON.stringify(data);
+  console.log("data To Sign: ", dataToSign);
+
+  const sign = crypto.createSign("RSA-SHA256"); // Gunakan algoritma yang sesuai
+  sign.update(dataToSign);
+  const signature = sign.sign(privateKey);
 
   const newBlock = new Block(
     index,
     previousBlock.hash,
     timestamp,
-    data,
-    nonce - 1,
+    data, // Gunakan objek JavaScript langsung
+    nonce,
     hash
   );
 
-  // Verifikasi tanda tangan digital menggunakan kunci publik
-  const isSignatureValid = verifySignature(
-    dataToSign,
-    userPublicKey,
-    signature
-  );
+  const isSignatureValid = verifySignature(dataToSign, publicKey, signature);
+  console.log("Is block valid?", isSignatureValid);
 
-  if (!isSignatureValid) {
-    console.error("Tanda Tangan Digital Tidak Valid.");
-    return null;
+  if (isSignatureValid) {
+    blockchain.push(newBlock);
+    usedCertificateNumbers.add(data.number);
+    saveBlockchain();
+  } else {
+    console.error("Digital signature is not valid.");
   }
 
-  blockchain.push(newBlock);
-  usedCertificateNumbers.add(data.number);
-  lastDataHash = calculateHash(JSON.stringify(data));
-  saveBlockchain();
-
-  return newBlock;
+  return isSignatureValid ? newBlock : null;
 };
 
 const verifySignature = (data, publicKey, signature) => {
   try {
-    const verify = crypto.createVerify("SHA256");
+    if (!publicKey || !signature) {
+      console.error("Public key or signature is undefined.");
+      return false;
+    }
+
+    const verify = crypto.createVerify("RSA-SHA256"); // Gunakan algoritma yang sesuai
     verify.update(data);
-    return verify.verify(publicKey, signature, "base64");
+    return verify.verify(publicKey, signature);
   } catch (error) {
+    console.error("Error verifying signature:", error);
+    return false;
+  }
+};
+
+const updateBlockData = (blockIndex, newData, newOwnerPublicKey) => {
+  if (blockIndex < 0 || blockIndex >= blockchain.length) {
+    return false;
+  }
+
+  const block = blockchain[blockIndex];
+
+  // Verifikasi tanda tangan dari pemilik sertifikat sebelum memperbarui data
+  if (verifySignature(block.data, newOwnerPublicKey, newData.signature)) {
+    block.data = newData; // Gunakan objek JavaScript langsung
+    const newHash = calculateHash(
+      block.index,
+      block.previousHash,
+      block.timestamp,
+      block.data,
+      block.nonce
+    );
+    block.hash = newHash;
+    saveBlockchain();
+    return true;
+  } else {
     return false;
   }
 };
@@ -140,4 +191,5 @@ module.exports = {
   addBlock,
   generateKeyPair,
   verifySignature,
+  updateBlockData,
 };

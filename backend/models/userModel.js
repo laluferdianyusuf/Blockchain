@@ -1,17 +1,13 @@
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
-  fullName: {
+  full_name: {
     type: String,
     required: [true, "Name can't be empty"],
   },
   username: {
     type: String,
     required: [true, "Username can't be empty"],
-  },
-  nik: {
-    type: Number,
-    required: [true, "NIK can't be empty"],
   },
   email: {
     type: String,
@@ -20,6 +16,16 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, "Password can't be empty"],
+  },
+  phone_number: {
+    type: String,
+    required: [true, "Phone number can't be empty"],
+  },
+  otp_enable: {
+    type: Boolean,
+  },
+  otp_code: {
+    type: String,
   },
 });
 

@@ -1,14 +1,18 @@
 const mongoose = require("mongoose");
 
 const CertificateSchema = new mongoose.Schema({
-  //   user_id: {
-  //     type: mongoose.Schema.Types.ObjectId,
-  //     ref: "User",
-  //     required: [true, "User ID is required"],
-  //   },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: [true, "User ID is required"],
+  },
   number: {
     type: Number,
     required: [true, "Certificate number can't be empty"],
+  },
+  owner: {
+    type: String,
+    required: [true, "Owner can't be empty"],
   },
   nik: {
     type: Number,
@@ -37,6 +41,9 @@ const CertificateSchema = new mongoose.Schema({
   issueDate: {
     type: Date,
     required: [true, "Issue date can't be empty"],
+  },
+  publicKey: {
+    type: String,
   },
   //   verified: { type: Boolean, default: false },
 });

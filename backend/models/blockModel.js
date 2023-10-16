@@ -1,12 +1,13 @@
 const mongoose = require("mongoose");
 
-const BlockModel = mongoose.model("Block", {
-  index: Number,
-  previousHash: String,
-  timestamp: String,
-  data: String,
-  nonce: Number,
-  hash: String,
+const BlockSchema = new mongoose.Schema({
+  index: { type: Number },
+  previousHash: { type: String },
+  timestamp: { type: String },
+  data: { type: mongoose.Schema.Types.Mixed },
+  nonce: { type: Number },
+  hash: { type: String },
 });
 
-module.exports = BlockModel;
+const Block = mongoose.model("Block", BlockSchema);
+module.exports = Block;

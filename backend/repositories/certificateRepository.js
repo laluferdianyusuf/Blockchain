@@ -2,7 +2,9 @@ const Certificate = require("../models/certificateModel");
 
 class CertificateRepository {
   static async generateCertificate({
+    user_id,
     number,
+    owner,
     nik,
     address,
     city,
@@ -10,10 +12,13 @@ class CertificateRepository {
     length,
     area,
     issueDate,
+    publicKey,
   }) {
     try {
       const certificate = new Certificate({
+        user_id,
         number,
+        owner,
         nik,
         address,
         city,
@@ -21,6 +26,7 @@ class CertificateRepository {
         length,
         area,
         issueDate,
+        publicKey,
       });
 
       await certificate.save();
@@ -40,6 +46,34 @@ class CertificateRepository {
         },
       };
     }
+  }
+
+  static async updateCertificateOwnershipByNumber(number, newOwner) {
+    try {
+      const certificate = await Certificate.findOne({ number });
+
+      if (!certificate) {
+        return null;
+      }
+
+      certificate.owner = newOwner;
+
+      const updatedCertificate = await certificate.save();
+
+      return updatedCertificate;
+    } catch (error) {
+      console.error("Error updating certificate ownership:", error);
+      return null;
+    }
+  }
+
+  static async findCertificateByNumber({ number }) {
+    const certificate = await Certificate.findOne({ number });
+    return certificate;
+  }
+
+  static async getOwnershipHistoryByNumber(number) {
+    return Certificate.find({ number }).select("owner timestamp");
   }
 }
 
