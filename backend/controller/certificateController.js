@@ -12,6 +12,7 @@ const generateCertificate = async (req, res) => {
     area,
     issueDate,
     publicKey,
+    signature,
   } = req.body;
   const user_id = req.user.id;
 
@@ -29,6 +30,7 @@ const generateCertificate = async (req, res) => {
         area,
         issueDate,
         publicKey,
+        signature,
       });
 
     res.status(statusCode).send({
@@ -74,11 +76,53 @@ const transferCertificateOwnership = async (req, res) => {
   }
 };
 
-const getOwnershipHistory = async (req, res) => {
-  const { number } = req.params;
+// const getOwnershipHistory = async (req, res) => {
+//   const { number } = req.params;
+//   try {
+//     const { status, statusCode, message, data } =
+//       await CertificateService.getOwnershipHistory(number);
+//     res.status(statusCode).send({
+//       status: status,
+//       message: message,
+//       data: data,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       status: false,
+//       statusCode: 500,
+//       message: "Internal Server Error",
+//       data: null,
+//     });
+//   }
+// };
+
+const findCertificateByNumber = async (req, res) => {
   try {
+    const { number } = req.params;
     const { status, statusCode, message, data } =
-      await CertificateService.getOwnershipHistory(number);
+      await CertificateService.findBlocksByCertificateNumber({ number });
+    res.status(statusCode).send({
+      status: status,
+      message: message,
+      data: data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      statusCode: 500,
+      message: "Internal Server Error",
+      data: null,
+    });
+  }
+};
+
+const getOwnershipHistory = async (req, res) => {
+  try {
+    const { number } = req.params;
+    const { status, statusCode, message, data } =
+      await CertificateService.getOwnershipHistory({ number });
     res.status(statusCode).send({
       status: status,
       message: message,
@@ -99,4 +143,5 @@ module.exports = {
   generateCertificate,
   transferCertificateOwnership,
   getOwnershipHistory,
+  findCertificateByNumber,
 };

@@ -13,6 +13,7 @@ class CertificateRepository {
     area,
     issueDate,
     publicKey,
+    signature,
   }) {
     try {
       const certificate = new Certificate({
@@ -27,6 +28,7 @@ class CertificateRepository {
         area,
         issueDate,
         publicKey,
+        signature,
       });
 
       await certificate.save();

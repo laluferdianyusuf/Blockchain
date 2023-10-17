@@ -45,16 +45,10 @@ const CertificateSchema = new mongoose.Schema({
   publicKey: {
     type: String,
   },
-  //   verified: { type: Boolean, default: false },
+  signature: {
+    type: Buffer,
+  },
 });
-
-// CertificateSchema.methods.setIsVerified = function (status) {
-//   this.isVerified = status;
-// };
-
-// CertificateSchema.methods.getIsVerified = function () {
-//   return this.isVerified;
-// };
 
 const Certificate = mongoose.model("Certificate", CertificateSchema);
 

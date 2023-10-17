@@ -21,13 +21,16 @@ class BlockRepository {
     await newBlock.save();
   }
 
-  static async findBlocksByCertificateNumber(number) {
+  static async findBlocksByCertificateNumber({ number }) {
     try {
-      const blocks = await BlockModel.find({ "data.number": number });
+      const blocks = await BlockModel.find({
+        "data.number": parseFloat(number),
+      });
+
       return blocks;
     } catch (error) {
       console.error("Error finding blocks:", error);
-      return [];
+      return null;
     }
   }
 }

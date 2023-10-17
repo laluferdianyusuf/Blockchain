@@ -32,6 +32,11 @@ app.put(
   certificate.transferCertificateOwnership
 );
 app.get(
+  "/api/certificates/:number",
+  middleware.authenticate,
+  certificate.findCertificateByNumber
+);
+app.get(
   "/api/certificates/owner/history/:number",
   middleware.authenticate,
   certificate.getOwnershipHistory

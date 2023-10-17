@@ -135,6 +135,7 @@ class CertificateService {
           area,
           issueDate: new Date().getTime(),
           publicKey: publicKey,
+          signature: signature,
         });
 
         return {
@@ -187,12 +188,12 @@ class CertificateService {
       const currentOwnerPublicKey = fs.readFileSync("public_key.pem", "utf8");
       const sign = crypto.createSign("SHA256");
       sign.update(dataToSign);
-      const signature = sign.sign(currentOwnerPrivateKey);
+      certificate.signature = sign.sign(currentOwnerPrivateKey);
 
       const isSignatureValid = verifySignature(
         dataToSign,
         currentOwnerPublicKey,
-        signature
+        certificate.signature
       );
 
       if (!isSignatureValid) {
@@ -210,7 +211,8 @@ class CertificateService {
       const updatedCertificate =
         await CertificateRepository.updateCertificateOwnershipByNumber(
           number,
-          newOwner
+          newOwner,
+          certificate.signature
         );
 
       if (updatedCertificate) {
@@ -263,76 +265,158 @@ class CertificateService {
     }
   }
 
-  static async getOwnershipHistory(number) {
+  // static async getOwnershipHistory(number) {
+  //   try {
+  //     const blocks = await BlockRepository.findBlocksByCertificateNumber(
+  //       number
+  //     );
+  //     const databaseEntries =
+  //       await CertificateRepository.getOwnershipHistoryByNumber(number);
+  //     const history = [];
+
+  //     // Daftar perubahan kepemilikan dari blockchain
+  //     const blockchainOwnershipChanges = blocks.map((block) => {
+  //       const blockData = JSON.parse(block.data);
+  //       return {
+  //         owner: blockData.owner,
+  //         timestamp: block.timestamp,
+  //       };
+  //     });
+
+  //     // Daftar perubahan kepemilikan dari database
+  //     const databaseOwnershipChanges = databaseEntries.map((entry) => {
+  //       return {
+  //         owner: entry.owner,
+  //         timestamp: entry.timestamp,
+  //       };
+  //     });
+
+  //     // Gabungkan dan urutkan perubahan kepemilikan dari blockchain dan database
+  //     const allOwnershipChanges = [
+  //       ...blockchainOwnershipChanges,
+  //       ...databaseOwnershipChanges,
+  //     ];
+  //     allOwnershipChanges.sort((a, b) => a.timestamp - b.timestamp);
+
+  //     // Buat riwayat dengan pemilik sebelumnya dan pemilik saat ini
+  //     let previousOwner = null;
+  //     for (const change of allOwnershipChanges) {
+  //       if (previousOwner !== null) {
+  //         history.push({
+  //           previousOwner,
+  //           newOwner: change.owner,
+  //           timestamp: change.timestamp,
+  //         });
+  //       } else {
+  //         // Jika ini adalah entri pertama dalam riwayat, maka pemilik sebelumnya dan sesudahnya adalah sama
+  //         history.push({
+  //           previousOwner: change.owner,
+  //           newOwner: change.owner,
+  //           timestamp: change.timestamp,
+  //         });
+  //       }
+  //       previousOwner = change.owner;
+  //     }
+
+  //     return {
+  //       status: true,
+  //       statusCode: 200,
+  //       message: "Riwayat kepemilikan berhasil diambil.",
+  //       data: {
+  //         history,
+  //       },
+  //     };
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     return {
+  //       status: false,
+  //       statusCode: 500,
+  //       message: "Gagal mengambil riwayat kepemilikan.",
+  //       data: null,
+  //     };
+  //   }
+  // }
+
+  static async findBlocksByCertificateNumber({ number }) {
     try {
-      const blocks = await BlockRepository.findBlocksByCertificateNumber(
-        number
-      );
-      const databaseEntries =
-        await CertificateRepository.getOwnershipHistoryByNumber(number);
-      const history = [];
-
-      // Daftar perubahan kepemilikan dari blockchain
-      const blockchainOwnershipChanges = blocks.map((block) => {
-        const blockData = JSON.parse(block.data);
-        return {
-          owner: blockData.owner,
-          timestamp: block.timestamp,
-        };
+      console.log("Number to search:", number);
+      const blocks = await BlockRepository.findBlocksByCertificateNumber({
+        number,
       });
 
-      // Daftar perubahan kepemilikan dari database
-      const databaseOwnershipChanges = databaseEntries.map((entry) => {
+      if (blocks && blocks.length > 0) {
+        // Handle the found blocks (since there can be multiple with the same certificate number)
+        console.log("Blocks found:", blocks);
         return {
-          owner: entry.owner,
-          timestamp: entry.timestamp,
+          status: true,
+          statusCode: 200,
+          message: "Success get certificates",
+          data: blocks,
         };
-      });
-
-      // Gabungkan dan urutkan perubahan kepemilikan dari blockchain dan database
-      const allOwnershipChanges = [
-        ...blockchainOwnershipChanges,
-        ...databaseOwnershipChanges,
-      ];
-      allOwnershipChanges.sort((a, b) => a.timestamp - b.timestamp);
-
-      // Buat riwayat dengan pemilik sebelumnya dan pemilik saat ini
-      let previousOwner = null;
-      for (const change of allOwnershipChanges) {
-        if (previousOwner !== null) {
-          history.push({
-            previousOwner,
-            newOwner: change.owner,
-            timestamp: change.timestamp,
-          });
-        } else {
-          // Jika ini adalah entri pertama dalam riwayat, maka pemilik sebelumnya dan sesudahnya adalah sama
-          history.push({
-            previousOwner: change.owner,
-            newOwner: change.owner,
-            timestamp: change.timestamp,
-          });
-        }
-        previousOwner = change.owner;
+      } else {
+        console.log("Blocks not found for number:", number);
+        return {
+          status: false,
+          statusCode: 404,
+          message: "Cannot get certificates",
+          data: null,
+        };
       }
-
-      return {
-        status: true,
-        statusCode: 200,
-        message: "Riwayat kepemilikan berhasil diambil.",
-        data: {
-          history,
-        },
-      };
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error retrieving data:", error);
       return {
         status: false,
         statusCode: 500,
-        message: "Gagal mengambil riwayat kepemilikan.",
+        message: "Internal Server Error",
         data: null,
       };
     }
+  }
+
+  static async getOwnershipHistory({ number }) {
+    const blocks = await BlockRepository.findBlocksByCertificateNumber({
+      number,
+    });
+
+    if (blocks && blocks.length > 0) {
+      const ownershipHistory = [];
+      let previousOwner = null;
+
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+
+        if (block.data && block.data.owner) {
+          if (previousOwner === null) {
+            // Set pemilik pertama
+            previousOwner = block.data;
+          } else if (block.data.owner !== previousOwner) {
+            // Temukan perubahan pemilik
+            ownershipHistory.push({
+              previousOwner,
+              currentOwner: block.data,
+              transactionDate: block.timestamp,
+            });
+            previousOwner = block.data;
+          }
+        }
+      }
+
+      if (ownershipHistory.length > 0) {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Success get ownership history",
+          data: ownershipHistory,
+        };
+      }
+    }
+
+    return {
+      status: false,
+      statusCode: 400,
+      message: "Cannot get ownership history",
+      data: null,
+    };
   }
 }
 
