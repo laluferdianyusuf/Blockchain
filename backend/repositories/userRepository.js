@@ -1,5 +1,6 @@
 const UserModels = require("../models/userModel");
 const twilio = require("twilio");
+require("dotenv").config();
 
 class UserRepository {
   static async CreateUser({
@@ -10,6 +11,8 @@ class UserRepository {
     phone_number,
     otp_enable,
     otp_code,
+    private_key,
+    public_key,
   }) {
     const createUser = new UserModels({
       full_name,
@@ -19,6 +22,8 @@ class UserRepository {
       phone_number,
       otp_enable,
       otp_code,
+      private_key,
+      public_key,
     });
 
     const user = await createUser.save();
@@ -38,19 +43,23 @@ class UserRepository {
   static async sendOTPviaSMS(phone_number, otp_code) {
     try {
       const twilioClient = twilio(
-        "AC2daccc77f82de0500d09b71bc4fb20e7",
-        "42ad54c79a878a48b52cb37b463481d8"
+        process.env.TWILIO_SID,
+        process.env.TWILIO_AUTH
       );
 
       twilioClient.messages.create({
-        body: `Kode OTP Anda: ${otp_code}`,
-        from: "+12053089792",
+        body: `Here your OTP: ${otp_code}`,
+        from: process.env.TWILIO_PHONE_NUMBER,
         to: phone_number,
       });
       return true;
     } catch (error) {
       return false;
     }
+  }
+  static async findUserId(_id) {
+    const user = await UserModels.findById(_id);
+    return user;
   }
 }
 

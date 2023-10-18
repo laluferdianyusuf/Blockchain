@@ -51,13 +51,14 @@ const generateCertificate = async (req, res) => {
 };
 
 const transferCertificateOwnership = async (req, res) => {
-  const { number, currentOwnerPrivateKey, newOwner } = req.body;
+  const { number, currentOwnerPrivateKey, newOwner, newUserId } = req.body;
   try {
     const { status, statusCode, message, data } =
       await CertificateService.transferOwnership({
         number,
         currentOwnerPrivateKey,
         newOwner,
+        newUserId,
       });
 
     res.status(statusCode).send({
@@ -75,27 +76,6 @@ const transferCertificateOwnership = async (req, res) => {
     });
   }
 };
-
-// const getOwnershipHistory = async (req, res) => {
-//   const { number } = req.params;
-//   try {
-//     const { status, statusCode, message, data } =
-//       await CertificateService.getOwnershipHistory(number);
-//     res.status(statusCode).send({
-//       status: status,
-//       message: message,
-//       data: data,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       status: false,
-//       statusCode: 500,
-//       message: "Internal Server Error",
-//       data: null,
-//     });
-//   }
-// };
 
 const findCertificateByNumber = async (req, res) => {
   try {
@@ -139,9 +119,35 @@ const getOwnershipHistory = async (req, res) => {
   }
 };
 
+const getCertificateByUserId = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    console.log(user_id);
+    const { status, statusCode, message, data } =
+      await CertificateService.getCertificatesByUserId({ user_id });
+
+    res.status(statusCode).send({
+      status: status,
+      message: message,
+      data: data,
+    });
+  } catch (error) {
+    console.error("Error get certificate:", error);
+
+    res.status(500).send({
+      status: false,
+      message: "Internal server error",
+      data: {
+        certificates: null,
+      },
+    });
+  }
+};
+
 module.exports = {
   generateCertificate,
   transferCertificateOwnership,
   getOwnershipHistory,
   findCertificateByNumber,
+  getCertificateByUserId,
 };

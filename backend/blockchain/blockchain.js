@@ -54,7 +54,7 @@ const saveBlockchain = () => {
   try {
     fs.writeFileSync(
       "blockchain.json",
-      JSON.stringify(blockchain, null, 1),
+      JSON.stringify(blockchain, null, 2),
       "utf8"
     );
   } catch (err) {
@@ -64,24 +64,20 @@ const saveBlockchain = () => {
 
 loadBlockchain();
 
-let privateKey, publicKey;
+const privateKey = fs.readFileSync("private_key.pem", "utf8");
+const publicKey = fs.readFileSync("public_key.pem", "utf8");
 
 const generateKeyPair = () => {
-  if (fs.existsSync("private_key.pem") && fs.existsSync("public_key.pem")) {
-    privateKey = fs.readFileSync("private_key.pem", "utf8");
-    publicKey = fs.readFileSync("public_key.pem", "utf8");
-  } else {
-    const keys = forge.pki.rsa.generateKeyPair(1024);
+  const keys = forge.pki.rsa.generateKeyPair(1024); // Menghasilkan pasangan kunci RSA dengan panjang 1024 bits
 
-    privateKey = forge.pki.privateKeyToPem(keys.privateKey);
-    publicKey = forge.pki.publicKeyToPem(keys.publicKey);
+  const privateKey = forge.pki.privateKeyToPem(keys.privateKey);
+  const publicKey = forge.pki.publicKeyToPem(keys.publicKey);
 
-    try {
-      fs.writeFileSync("private_key.pem", privateKey, "utf8");
-      fs.writeFileSync("public_key.pem", publicKey, "utf8");
-    } catch (err) {
-      console.error("Error saving keys:", err);
-    }
+  try {
+    fs.writeFileSync("private_key.pem", privateKey, "utf8");
+    fs.writeFileSync("public_key.pem", publicKey, "utf8");
+  } catch (err) {
+    console.error("Error saving keys:", err);
   }
 
   return { privateKey, publicKey };
@@ -112,21 +108,22 @@ const addBlock = (data) => {
   const index = previousBlock.index + 1;
   const timestamp = Date.now().toString();
 
-  // Menambang (mine) blok
   const { nonce, hash } = mineBlock(index, previousBlock.hash, timestamp, data);
 
   const dataToSign = JSON.stringify(data);
   console.log("data To Sign: ", dataToSign);
 
-  const sign = crypto.createSign("RSA-SHA256"); // Gunakan algoritma yang sesuai
+  // Sign the data with the private key
+  const sign = crypto.createSign("RSA-SHA256");
   sign.update(dataToSign);
+  sign.end(); // You need to call sign.end() to complete the data to be signed
   const signature = sign.sign(privateKey);
 
   const newBlock = new Block(
     index,
     previousBlock.hash,
     timestamp,
-    data, // Gunakan objek JavaScript langsung
+    data,
     nonce,
     hash
   );
@@ -152,36 +149,11 @@ const verifySignature = (data, publicKey, signature) => {
       return false;
     }
 
-    const verify = crypto.createVerify("RSA-SHA256"); // Gunakan algoritma yang sesuai
+    const verify = crypto.createVerify("RSA-SHA256");
     verify.update(data);
     return verify.verify(publicKey, signature);
   } catch (error) {
     console.error("Error verifying signature:", error);
-    return false;
-  }
-};
-
-const updateBlockData = (blockIndex, newData, newOwnerPublicKey) => {
-  if (blockIndex < 0 || blockIndex >= blockchain.length) {
-    return false;
-  }
-
-  const block = blockchain[blockIndex];
-
-  // Verifikasi tanda tangan dari pemilik sertifikat sebelum memperbarui data
-  if (verifySignature(block.data, newOwnerPublicKey, newData.signature)) {
-    block.data = newData; // Gunakan objek JavaScript langsung
-    const newHash = calculateHash(
-      block.index,
-      block.previousHash,
-      block.timestamp,
-      block.data,
-      block.nonce
-    );
-    block.hash = newHash;
-    saveBlockchain();
-    return true;
-  } else {
     return false;
   }
 };
@@ -191,5 +163,4 @@ module.exports = {
   addBlock,
   generateKeyPair,
   verifySignature,
-  updateBlockData,
 };

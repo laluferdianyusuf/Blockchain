@@ -1,5 +1,5 @@
 const Certificate = require("../models/certificateModel");
-
+const { ObjectId } = require("mongoose").Types;
 class CertificateRepository {
   static async generateCertificate({
     user_id,
@@ -50,7 +50,7 @@ class CertificateRepository {
     }
   }
 
-  static async updateCertificateOwnershipByNumber(number, newOwner) {
+  static async updateCertificateOwnershipByNumber(number, newOwner, newUserId) {
     try {
       const certificate = await Certificate.findOne({ number });
 
@@ -59,6 +59,7 @@ class CertificateRepository {
       }
 
       certificate.owner = newOwner;
+      certificate.user_id = newUserId;
 
       const updatedCertificate = await certificate.save();
 
@@ -76,6 +77,17 @@ class CertificateRepository {
 
   static async getOwnershipHistoryByNumber(number) {
     return Certificate.find({ number }).select("owner timestamp");
+  }
+
+  static async getCertificatesByUserId({ user_id }) {
+    try {
+      const certificates = await Certificate.find({ user_id });
+      console.log(certificates);
+      return certificates;
+    } catch (error) {
+      console.error("Can't get certificates:", error.message);
+      throw error;
+    }
   }
 }
 

@@ -1,15 +1,13 @@
 const CertificateRepository = require("../repositories/certificateRepository");
+const UserRepository = require("../repositories/userRepository");
 const BlockRepository = require("../repositories/blockRepository");
 const {
   verifySignature,
   blockchain,
-  generateKeyPair,
   addBlock,
 } = require("../blockchain/blockchain");
 const fs = require("fs");
 const crypto = require("crypto");
-
-const usedCertificateNumbers = new Set();
 
 class CertificateService {
   static async generateCertificate({
@@ -24,29 +22,33 @@ class CertificateService {
     area,
   }) {
     try {
-      if (usedCertificateNumbers.has(number)) {
-        console.error("Nomor sertifikat sudah digunakan sebelumnya.");
+      const existNumber = await CertificateRepository.findCertificateByNumber({
+        number,
+      });
+      if (existNumber) {
+        console.error("The certificate number has been used previously.");
         return {
           status: false,
           statusCode: 400,
-          message: "Nomor sertifikat sudah digunakan sebelumnya.",
+          message: "The certificate number has been used previously.",
           data: null,
         };
       }
 
       if (!fs.existsSync("private_key.pem")) {
         console.error(
-          "Kunci pribadi tidak tersedia. Harap buat kunci pribadi dan simpan sebagai 'private_key.pem' dalam direktori proyek Anda."
+          "Private key is not available. Please create a private key and save it as 'private_key.pem' in your project directory."
         );
         return {
           status: false,
           statusCode: 400,
-          message: "Kunci pribadi tidak tersedia.",
+          message: "Private key is not available.",
           data: null,
         };
       }
 
-      const { privateKey, publicKey } = generateKeyPair();
+      const privateKey = fs.readFileSync("private_key.pem", "utf8");
+      const publicKey = fs.readFileSync("public_key.pem", "utf8");
       console.log("public key: " + JSON.stringify(publicKey));
 
       const dataToSign = JSON.stringify({
@@ -71,13 +73,11 @@ class CertificateService {
       );
 
       if (lastBlockData === dataToSign) {
-        console.error(
-          "Data tidak dapat digunakan dalam transaksi berturut-turut."
-        );
+        console.error("Data cannot be used in consecutive transactions.");
         return {
           status: false,
           statusCode: 400,
-          message: "Data tidak dapat digunakan dalam transaksi berturut-turut.",
+          message: "Data cannot be used in consecutive transactions.",
           data: null,
         };
       }
@@ -112,8 +112,6 @@ class CertificateService {
       const newBlock = addBlock(certificate);
 
       if (newBlock) {
-        usedCertificateNumbers.add(number);
-
         await BlockRepository.saveBlockToDatabase(
           newBlock.index,
           newBlock.previousHash,
@@ -141,17 +139,18 @@ class CertificateService {
         return {
           status: true,
           statusCode: 200,
-          message: "Sertifikat berhasil dibuat dan disimpan di blockchain",
+          message:
+            "The certificate is successfully generated and stored on the blockchain",
           data: {
             certificates: certificates.data,
           },
         };
       } else {
-        console.error("Gagal menambahkan sertifikat ke blockchain.");
+        console.error("Failed to add certificate to blockchain.");
         return {
           status: false,
           statusCode: 500,
-          message: "Gagal menambahkan sertifikat ke blockchain.",
+          message: "Failed to add certificate to blockchain.",
           data: null,
         };
       }
@@ -160,7 +159,7 @@ class CertificateService {
       return {
         status: false,
         statusCode: 500,
-        message: "Kesalahan Layanan: " + error.message,
+        message: "Service Error: " + error.message,
         data: {
           certificates: null,
         },
@@ -168,17 +167,32 @@ class CertificateService {
     }
   }
 
-  static async transferOwnership({ number, currentOwnerPrivateKey, newOwner }) {
+  static async transferOwnership({
+    number,
+    currentOwnerPrivateKey,
+    newOwner,
+    newUserId,
+  }) {
     try {
       const certificate = await CertificateRepository.findCertificateByNumber({
         number,
       });
+      const existUser = await UserRepository.findUserId(newUserId);
 
       if (!certificate) {
         return {
           status: false,
           statusCode: 404,
-          message: "Sertifikat tidak ditemukan.",
+          message: "Certificate not found.",
+          data: null,
+        };
+      }
+
+      if (!existUser) {
+        return {
+          status: false,
+          statusCode: 404,
+          message: "User not found.",
           data: null,
         };
       }
@@ -200,18 +214,20 @@ class CertificateService {
         return {
           status: false,
           statusCode: 400,
-          message: "Tanda tangan pemilik saat ini tidak valid.",
+          message: "The current owner's signature is invalid.",
           data: null,
         };
       }
 
       certificate.owner = newOwner;
+      certificate.user_id = newUserId;
 
       // Memperbarui kepemilikan sertifikat di database
       const updatedCertificate =
         await CertificateRepository.updateCertificateOwnershipByNumber(
           number,
           newOwner,
+          newUserId,
           certificate.signature
         );
 
@@ -232,17 +248,16 @@ class CertificateService {
             status: true,
             statusCode: 200,
             message:
-              "Kepemilikan sertifikat berhasil diperbarui di blockchain.",
+              "Certificate ownership is successfully updated on the blockchain.",
             data: {
               certificate: updatedCertificate,
-              newBlock,
             },
           };
         } else {
           return {
             status: false,
             statusCode: 500,
-            message: "Gagal menambahkan blok baru ke blockchain.",
+            message: "Failed to add a new block to the blockchain.",
             data: null,
           };
         }
@@ -250,7 +265,7 @@ class CertificateService {
         return {
           status: false,
           statusCode: 500,
-          message: "Gagal memperbarui kepemilikan sertifikat di database.",
+          message: "Failed to update certificate ownership in the database.",
           data: null,
         };
       }
@@ -259,83 +274,11 @@ class CertificateService {
       return {
         status: false,
         statusCode: 500,
-        message: "Kesalahan Layanan: " + error.message,
+        message: "Service error: " + error.message,
         data: null,
       };
     }
   }
-
-  // static async getOwnershipHistory(number) {
-  //   try {
-  //     const blocks = await BlockRepository.findBlocksByCertificateNumber(
-  //       number
-  //     );
-  //     const databaseEntries =
-  //       await CertificateRepository.getOwnershipHistoryByNumber(number);
-  //     const history = [];
-
-  //     // Daftar perubahan kepemilikan dari blockchain
-  //     const blockchainOwnershipChanges = blocks.map((block) => {
-  //       const blockData = JSON.parse(block.data);
-  //       return {
-  //         owner: blockData.owner,
-  //         timestamp: block.timestamp,
-  //       };
-  //     });
-
-  //     // Daftar perubahan kepemilikan dari database
-  //     const databaseOwnershipChanges = databaseEntries.map((entry) => {
-  //       return {
-  //         owner: entry.owner,
-  //         timestamp: entry.timestamp,
-  //       };
-  //     });
-
-  //     // Gabungkan dan urutkan perubahan kepemilikan dari blockchain dan database
-  //     const allOwnershipChanges = [
-  //       ...blockchainOwnershipChanges,
-  //       ...databaseOwnershipChanges,
-  //     ];
-  //     allOwnershipChanges.sort((a, b) => a.timestamp - b.timestamp);
-
-  //     // Buat riwayat dengan pemilik sebelumnya dan pemilik saat ini
-  //     let previousOwner = null;
-  //     for (const change of allOwnershipChanges) {
-  //       if (previousOwner !== null) {
-  //         history.push({
-  //           previousOwner,
-  //           newOwner: change.owner,
-  //           timestamp: change.timestamp,
-  //         });
-  //       } else {
-  //         // Jika ini adalah entri pertama dalam riwayat, maka pemilik sebelumnya dan sesudahnya adalah sama
-  //         history.push({
-  //           previousOwner: change.owner,
-  //           newOwner: change.owner,
-  //           timestamp: change.timestamp,
-  //         });
-  //       }
-  //       previousOwner = change.owner;
-  //     }
-
-  //     return {
-  //       status: true,
-  //       statusCode: 200,
-  //       message: "Riwayat kepemilikan berhasil diambil.",
-  //       data: {
-  //         history,
-  //       },
-  //     };
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //     return {
-  //       status: false,
-  //       statusCode: 500,
-  //       message: "Gagal mengambil riwayat kepemilikan.",
-  //       data: null,
-  //     };
-  //   }
-  // }
 
   static async findBlocksByCertificateNumber({ number }) {
     try {
@@ -389,6 +332,10 @@ class CertificateService {
           if (previousOwner === null) {
             // Set pemilik pertama
             previousOwner = block.data;
+            ownershipHistory.push({
+              owner: previousOwner,
+              loginHistory: [block.timestamp], // Catat waktu login pertama
+            });
           } else if (block.data.owner !== previousOwner) {
             // Temukan perubahan pemilik
             ownershipHistory.push({
@@ -417,6 +364,43 @@ class CertificateService {
       message: "Cannot get ownership history",
       data: null,
     };
+  }
+
+  static async getCertificatesByUserId({ user_id }) {
+    try {
+      const certificates = await CertificateRepository.getCertificatesByUserId({
+        user_id,
+      });
+
+      if (certificates && certificates.length > 0) {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Certificates found",
+          data: {
+            certificates,
+          },
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 404,
+          message: "Certificates not found",
+          data: {
+            certificates: null,
+          },
+        };
+      }
+    } catch (error) {
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Internal server error: " + error.message,
+        data: {
+          certificates: null,
+        },
+      };
+    }
   }
 }
 

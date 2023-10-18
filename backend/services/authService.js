@@ -3,6 +3,13 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const SALT_ROUND = 10;
 const { JWT } = require("../lib/const");
+const {
+  verifySignature,
+  blockchain,
+  generateKeyPair,
+  addBlock,
+} = require("../blockchain/blockchain");
+const nodemailer = require("nodemailer");
 
 class UserService {
   static async registerUser({
@@ -13,23 +20,20 @@ class UserService {
     phone_number,
   }) {
     try {
-      // Periksa apakah email atau nomor telepon sudah digunakan oleh pengguna lain
       const existingEmail = await UserRepository.FindByEmail({ email });
       console.log(existingEmail);
-      const existingPhone = await UserRepository.FindByPhoneNumber({
-        phone_number,
-      });
 
-      if (existingEmail || existingPhone) {
+      if (existingEmail) {
         return {
           status: false,
           statusCode: 400,
-          message: "Email or phone number are already in use",
+          message: "Email is already in use",
           data: { user: null },
         };
       } else {
         // Enkripsi kata sandi
         const hashedPassword = await bcrypt.hash(password, SALT_ROUND);
+        const { publicKey } = generateKeyPair();
 
         // Buat entitas pengguna baru
         const user = await UserRepository.CreateUser({
@@ -40,6 +44,8 @@ class UserService {
           phone_number,
           otp_code: null,
           otp_enable: false,
+          private_key: null,
+          public_key: publicKey,
         });
 
         return {
@@ -83,6 +89,7 @@ class UserService {
           ).toString();
           user.otp_code = generatedOTP;
           user.otp_enable = true;
+          user.private_key = null;
           await user.save();
 
           // Kirimkan OTP ke nomor telepon pengguna
@@ -98,7 +105,6 @@ class UserService {
             },
           };
         } else if (user.otp_code === otp_code) {
-          // OTP cocok, pengguna berhasil login
           const token = jwt.sign(
             {
               id: user.id,
@@ -109,11 +115,39 @@ class UserService {
               expiresIn: JWT.EXPIRED,
             }
           );
+          const { privateKey } = generateKeyPair();
 
-          // Nonaktifkan OTP setelah berhasil login
+          // Tambahkan ini untuk mengatur privateKey setelah verifikasi berhasil
           user.otp_enable = false;
           user.otp_code = null;
+          user.private_key = privateKey;
           await user.save();
+          const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 587,
+            secure: false,
+            requireTLS: true,
+            auth: {
+              user: "sedaikiseki1@gmail.com",
+              pass: "egowarzqmckcfact",
+            },
+          });
+          console.log(transporter.options.host);
+
+          const mailOptions = {
+            from: "noreply",
+            to: user.email,
+            subject: "Your Private Key, don't share it with others",
+            text: `Here is your private key: ${privateKey}`,
+          };
+
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.log(error);
+            } else {
+              console.log("Email sent: " + info.response);
+            }
+          });
 
           return {
             status: true,
