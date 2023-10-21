@@ -91,7 +91,15 @@ class CertificateService {
       console.log("Is Signature Valid:", isSignatureValid);
 
       if (isSignatureValid) {
-        console.log(dataToSign);
+        certificate.isValid = true;
+        await certificate.save();
+      } else {
+        return {
+          status: false,
+          statusCode: 400,
+          message: "The current owner's signature is invalid.",
+          data: null,
+        };
       }
 
       const certificate = {
@@ -217,12 +225,14 @@ class CertificateService {
           message: "The current owner's signature is invalid.",
           data: null,
         };
+      } else {
+        certificate.isValid = true;
+        await certificate.save();
       }
 
       certificate.owner = newOwner;
       certificate.user_id = newUserId;
 
-      // Memperbarui kepemilikan sertifikat di database
       const updatedCertificate =
         await CertificateRepository.updateCertificateOwnershipByNumber(
           number,
@@ -232,7 +242,6 @@ class CertificateService {
         );
 
       if (updatedCertificate) {
-        // Jika berhasil memperbarui blockchain, tambahkan blok baru
         const newBlock = addBlock(certificate);
 
         if (newBlock) {

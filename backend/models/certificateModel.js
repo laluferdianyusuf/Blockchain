@@ -48,6 +48,10 @@ const CertificateSchema = new mongoose.Schema({
   signature: {
     type: Buffer,
   },
+  isValid: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const Certificate = mongoose.model("Certificate", CertificateSchema);

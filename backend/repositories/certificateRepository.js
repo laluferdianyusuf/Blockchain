@@ -1,5 +1,4 @@
 const Certificate = require("../models/certificateModel");
-const { ObjectId } = require("mongoose").Types;
 class CertificateRepository {
   static async generateCertificate({
     user_id,
@@ -14,6 +13,7 @@ class CertificateRepository {
     issueDate,
     publicKey,
     signature,
+    isValid,
   }) {
     try {
       const certificate = new Certificate({
@@ -29,6 +29,7 @@ class CertificateRepository {
         issueDate,
         publicKey,
         signature,
+        isValid,
       });
 
       await certificate.save();
