@@ -68,7 +68,7 @@ const privateKey = fs.readFileSync("private_key.pem", "utf8");
 const publicKey = fs.readFileSync("public_key.pem", "utf8");
 
 const generateKeyPair = () => {
-  const keys = forge.pki.rsa.generateKeyPair(1024); // Menghasilkan pasangan kunci RSA dengan panjang 1024 bits
+  const keys = forge.pki.rsa.generateKeyPair(1024);
 
   const privateKey = forge.pki.privateKeyToPem(keys.privateKey);
   const publicKey = forge.pki.publicKeyToPem(keys.publicKey);
@@ -82,8 +82,6 @@ const generateKeyPair = () => {
 
   return { privateKey, publicKey };
 };
-
-generateKeyPair();
 
 const mineBlock = (index, previousHash, timestamp, data) => {
   let nonce = 0;

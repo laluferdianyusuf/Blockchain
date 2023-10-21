@@ -1,15 +1,11 @@
 const UserRepository = require("../repositories/userRepository");
+const LoginHistoryRepository = require("../repositories/historyRepository");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const SALT_ROUND = 10;
 const { JWT } = require("../lib/const");
-const {
-  verifySignature,
-  blockchain,
-  generateKeyPair,
-  addBlock,
-} = require("../blockchain/blockchain");
-const nodemailer = require("nodemailer");
+const { generateKeyPair } = require("../blockchain/blockchain");
+require("dotenv").config();
 
 class UserService {
   static async registerUser({
@@ -65,34 +61,41 @@ class UserService {
     }
   }
 
-  static async sendLoginOTP({ email, password, phone_number, otp_code }) {
+  static async sendLoginOTP({
+    email,
+    password,
+    phone_number,
+    otp_code,
+    userId,
+    deviceName,
+    deviceInfo,
+    userAgent,
+    ipAddress,
+    loginTime,
+  }) {
     try {
-      const userEmail = await UserRepository.FindByEmail({ email });
-      const user = await UserRepository.FindByPhoneNumber({ phone_number });
+      const user = await UserRepository.FindByEmail({ email });
 
-      if (!userEmail || !user) {
+      if (!user) {
         return {
           status: false,
           statusCode: 404,
-          message: "Invalid email address or phone number",
+          message: "Invalid email address",
           data: { user: null },
         };
       }
-
       const isUserMatch = await bcrypt.compare(password, user.password);
 
       if (isUserMatch) {
         if (!user.otp_enable) {
-          // OTP belum diaktifkan, kirimkan OTP baru
           const generatedOTP = Math.floor(
-            1000 + Math.random() * 9000
+            100000 + Math.random() * 900000
           ).toString();
           user.otp_code = generatedOTP;
           user.otp_enable = true;
           user.private_key = null;
           await user.save();
 
-          // Kirimkan OTP ke nomor telepon pengguna
           await UserRepository.sendOTPviaSMS(phone_number, generatedOTP);
 
           return {
@@ -117,37 +120,21 @@ class UserService {
           );
           const { privateKey } = generateKeyPair();
 
-          // Tambahkan ini untuk mengatur privateKey setelah verifikasi berhasil
           user.otp_enable = false;
           user.otp_code = null;
           user.private_key = privateKey;
           await user.save();
-          const transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 587,
-            secure: false,
-            requireTLS: true,
-            auth: {
-              user: "sedaikiseki1@gmail.com",
-              pass: "egowarzqmckcfact",
-            },
-          });
-          console.log(transporter.options.host);
 
-          const mailOptions = {
-            from: "noreply",
-            to: user.email,
-            subject: "Your Private Key, don't share it with others",
-            text: `Here is your private key: ${privateKey}`,
+          const loginHistory = {
+            userId,
+            deviceName,
+            deviceInfo,
+            userAgent,
+            ipAddress,
+            loginTime,
           };
 
-          transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-              console.log(error);
-            } else {
-              console.log("Email sent: " + info.response);
-            }
-          });
+          await LoginHistoryRepository.createLoginHistory({ loginHistory });
 
           return {
             status: true,
@@ -160,7 +147,6 @@ class UserService {
             },
           };
         } else {
-          // OTP tidak cocok
           return {
             status: false,
             statusCode: 400,
@@ -251,6 +237,67 @@ class UserService {
         statusCode: 500,
         message: "Failed to verify OTP: " + error,
         data: { user: null },
+      };
+    }
+  }
+
+  static async createHistory({
+    userId,
+    deviceName,
+    deviceInfo,
+    userAgent,
+    ipAddress,
+  }) {
+    try {
+      const userHistory = await LoginHistoryRepository.createLoginHistory({
+        userId,
+        deviceName,
+        deviceInfo,
+        userAgent,
+        ipAddress,
+        loginTime: new Date(),
+      });
+      return {
+        status: true,
+        statusCode: 200,
+        message: "Successfully created",
+        data: { user: userHistory },
+      };
+    } catch (error) {
+      console.error(error);
+      return {
+        status: true,
+        statusCode: 200,
+        message: "Internal Server Error",
+        data: { user: null },
+      };
+    }
+  }
+
+  static async getAllLoginHistory() {
+    try {
+      const loginHistory = await LoginHistoryRepository.getAllLoginHistory();
+      if (loginHistory) {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Successful get login history",
+          data: loginHistory,
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 400,
+          message: "Nobody is logged in",
+          data: null,
+        };
+      }
+    } catch (error) {
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Internal Server Error",
+        data: null,
       };
     }
   }

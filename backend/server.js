@@ -24,6 +24,7 @@ const otpMiddleware = require("./middleware/verifyOtp");
 app.post("/api/auth/register", auth.Register);
 app.post("/api/auth/login", auth.Login);
 app.post("/api/auth/otp/verify", auth.verifyOTP);
+app.get("/api/auth/history", middleware.authenticate, auth.getLoginHistory);
 
 // certificate api
 app.post(
@@ -43,7 +44,6 @@ app.get(
 );
 app.get(
   "/api/certificates/owner/history/:number",
-  middleware.authenticate,
   certificateController.getOwnershipHistory
 );
 app.get(

@@ -40,6 +40,10 @@ class UserRepository {
     return findUser;
   }
 
+  static async findUserId(_id) {
+    const user = await UserModels.findById(_id);
+    return user;
+  }
   static async sendOTPviaSMS(phone_number, otp_code) {
     try {
       const twilioClient = twilio(
@@ -56,10 +60,6 @@ class UserRepository {
     } catch (error) {
       return false;
     }
-  }
-  static async findUserId(_id) {
-    const user = await UserModels.findById(_id);
-    return user;
   }
 }
 
