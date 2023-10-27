@@ -33,6 +33,20 @@ class LoginHistoryRepository {
       throw error;
     }
   }
+
+  static async findById({ id }) {
+    const findById = await LoginHistoryModel.findById(id);
+
+    return findById;
+  }
+
+  static async deleteHistory({ id }) {
+    const deleteHistory = LoginHistoryModel.findByIdAndDelete(id, {
+      new: true,
+    });
+
+    return deleteHistory;
+  }
 }
 
 module.exports = LoginHistoryRepository;

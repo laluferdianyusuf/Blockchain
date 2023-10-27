@@ -1,5 +1,4 @@
 const AuthService = require("../services/authService");
-const device = require("express-device");
 const os = require("os");
 const requestIp = require("request-ip");
 
@@ -30,19 +29,20 @@ const Login = async (req, res) => {
     phone_number,
     otp_code,
   });
-  console.log(login);
-
   if (login.status) {
     const getIpAddress = requestIp.getClientIp;
+    const userAgent = req.get("user-agent");
+    const useragent = require("useragent");
+    const agent = useragent.parse(userAgent);
     const loginHistory = {
       userId: login.data.user._id,
       deviceName: os.hostname(),
-      deviceInfo: req.device || "Unknown device",
-      userAgent: req.get("user-agent"),
+      deviceInfo: agent.os.toString() || "Unknown device",
+      userAgent: agent.toAgent(),
+
       ipAddress: getIpAddress(req),
       loginTime: new Date(),
     };
-    console.log(loginHistory);
     await AuthService.createHistory(loginHistory);
   }
 
@@ -82,4 +82,51 @@ const getLoginHistory = async (req, res) => {
   }
 };
 
-module.exports = { Register, Login, verifyOTP, getLoginHistory };
+const currentUser = (req, res) => {
+  const user = req.user;
+
+  if (!user) {
+    return res.status(401).send({
+      status: false,
+      message: "User not authenticated.",
+      data: null,
+    });
+  }
+
+  res.status(200).send({
+    status: true,
+    message: "Get current user success.",
+    data: {
+      user: user,
+    },
+  });
+};
+
+const logout = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { status, statusCode, message, data } = await AuthService.logoutUser({
+      id,
+      userId,
+    });
+
+    res
+      .status(statusCode)
+      .send({ status: status, message: message, data: data });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    return res
+      .status(500)
+      .send({ success: false, message: "Internal server error" });
+  }
+};
+
+module.exports = {
+  Register,
+  Login,
+  verifyOTP,
+  getLoginHistory,
+  currentUser,
+  logout,
+};

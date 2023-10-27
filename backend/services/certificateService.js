@@ -20,6 +20,7 @@ class CertificateService {
     province,
     length,
     area,
+    issueDate,
   }) {
     try {
       const existNumber = await CertificateRepository.findCertificateByNumber({
@@ -61,7 +62,7 @@ class CertificateService {
         province,
         length,
         area,
-        issueDate: new Date().getTime(),
+        issueDate,
       });
 
       const sign = crypto.createSign("SHA256");
@@ -91,7 +92,7 @@ class CertificateService {
       console.log("Is Signature Valid:", isSignatureValid);
 
       if (isSignatureValid) {
-        certificate.isValid = true;
+        certificate.isValid = isSignatureValid;
         await certificate.save();
       } else {
         return {
@@ -112,7 +113,7 @@ class CertificateService {
         province,
         length,
         area,
-        issueDate: new Date().getTime(),
+        issueDate,
         signature,
         publicKey,
       };
@@ -139,7 +140,7 @@ class CertificateService {
           province,
           length,
           area,
-          issueDate: new Date().getTime(),
+          issueDate,
           publicKey: publicKey,
           signature: signature,
         });

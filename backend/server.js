@@ -18,13 +18,14 @@ const auth = require("./controller/authController");
 
 // middleware
 const middleware = require("./middleware/authenticate");
-const otpMiddleware = require("./middleware/verifyOtp");
 
 // auth api
 app.post("/api/auth/register", auth.Register);
 app.post("/api/auth/login", auth.Login);
 app.post("/api/auth/otp/verify", auth.verifyOTP);
 app.get("/api/auth/history", middleware.authenticate, auth.getLoginHistory);
+app.get("/api/auth/me", middleware.authenticate, auth.currentUser);
+app.delete("/api/history/:id", middleware.authenticate, auth.logout);
 
 // certificate api
 app.post(

@@ -4,13 +4,14 @@ const crypto = require("crypto");
 const forge = require("node-forge");
 
 class Block {
-  constructor(index, previousHash, timestamp, data, nonce, hash) {
+  constructor(index, previousHash, timestamp, data, nonce, hash, difficulty) {
     this.index = index;
     this.previousHash = previousHash;
     this.timestamp = timestamp;
     this.data = data;
     this.nonce = nonce;
     this.hash = hash;
+    this.difficulty = difficulty;
   }
 }
 
@@ -83,10 +84,10 @@ const generateKeyPair = () => {
   return { privateKey, publicKey };
 };
 
-const mineBlock = (index, previousHash, timestamp, data) => {
+const mineBlock = (index, previousHash, timestamp, data, difficulty) => {
   let nonce = 0;
   let hash = "";
-  const targetPrefix = "0000";
+  const targetPrefix = "0".repeat(difficulty);
 
   while (!hash.startsWith(targetPrefix)) {
     nonce++;
@@ -106,7 +107,13 @@ const addBlock = (data) => {
   const index = previousBlock.index + 1;
   const timestamp = Date.now().toString();
 
-  const { nonce, hash } = mineBlock(index, previousBlock.hash, timestamp, data);
+  const { nonce, hash } = mineBlock(
+    index,
+    previousBlock.hash,
+    timestamp,
+    data,
+    4
+  );
 
   const dataToSign = JSON.stringify(data);
   console.log("data To Sign: ", dataToSign);

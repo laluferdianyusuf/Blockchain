@@ -61,18 +61,7 @@ class UserService {
     }
   }
 
-  static async sendLoginOTP({
-    email,
-    password,
-    phone_number,
-    otp_code,
-    userId,
-    deviceName,
-    deviceInfo,
-    userAgent,
-    ipAddress,
-    loginTime,
-  }) {
+  static async sendLoginOTP({ email, password, phone_number, otp_code }) {
     try {
       const user = await UserRepository.FindByEmail({ email });
 
@@ -124,17 +113,6 @@ class UserService {
           user.otp_code = null;
           user.private_key = privateKey;
           await user.save();
-
-          const loginHistory = {
-            userId,
-            deviceName,
-            deviceInfo,
-            userAgent,
-            ipAddress,
-            loginTime,
-          };
-
-          await LoginHistoryRepository.createLoginHistory({ loginHistory });
 
           return {
             status: true,
@@ -241,33 +219,45 @@ class UserService {
     }
   }
 
-  static async createHistory({
-    userId,
-    deviceName,
-    deviceInfo,
-    userAgent,
-    ipAddress,
-  }) {
+  static async createHistory(loginHistory) {
     try {
-      const userHistory = await LoginHistoryRepository.createLoginHistory({
-        userId,
-        deviceName,
-        deviceInfo,
-        userAgent,
-        ipAddress,
-        loginTime: new Date(),
+      const userId = loginHistory.userId;
+
+      const existingHistory = await LoginHistoryRepository.findById({
+        id: userId,
       });
-      return {
-        status: true,
-        statusCode: 200,
-        message: "Successfully created",
-        data: { user: userHistory },
-      };
+
+      if (existingHistory) {
+        existingHistory.deviceName = loginHistory.deviceName;
+        existingHistory.deviceInfo = loginHistory.deviceInfo;
+        existingHistory.userAgent = loginHistory.userAgent;
+        existingHistory.ipAddress = loginHistory.ipAddress;
+        existingHistory.loginTime = loginHistory.loginTime;
+
+        await existingHistory.save();
+
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Successfully updated",
+          data: { user: existingHistory },
+        };
+      } else {
+        const userHistory = await LoginHistoryRepository.createLoginHistory(
+          loginHistory
+        );
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Successfully created",
+          data: { user: userHistory },
+        };
+      }
     } catch (error) {
       console.error(error);
       return {
-        status: true,
-        statusCode: 200,
+        status: false,
+        statusCode: 500,
         message: "Internal Server Error",
         data: { user: null },
       };
@@ -297,6 +287,39 @@ class UserService {
         status: false,
         statusCode: 500,
         message: "Internal Server Error",
+        data: null,
+      };
+    }
+  }
+
+  static async logoutUser({ id, userId }) {
+    try {
+      const getUsers = await LoginHistoryRepository.findById({ id });
+
+      if (getUsers.userId == userId) {
+        const deleteHistory = await LoginHistoryRepository.deleteHistory({
+          id,
+        });
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Successful delete history",
+          data: deleteHistory,
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 404,
+          message: "Cannot delete history",
+          data: null,
+        };
+      }
+    } catch (error) {
+      console.log(error);
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Error deleting history",
         data: null,
       };
     }
