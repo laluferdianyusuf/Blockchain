@@ -1,15 +1,15 @@
 import React from "react";
 import Navbar from "../../components/Navbar";
-import OwnerHistory from "../../components/History";
+import Validate from "../../components/Validate";
 
-export default function History() {
+export default function Validation() {
   return (
     <>
       <div>
         <Navbar />{" "}
       </div>
       <div>
-        <OwnerHistory />{" "}
+        <Validate />{" "}
       </div>
     </>
   );

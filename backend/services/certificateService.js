@@ -5,8 +5,8 @@ const {
   verifySignature,
   blockchain,
   addBlock,
+  generateKeyPair,
 } = require("../blockchain/blockchain");
-const fs = require("fs");
 const crypto = require("crypto");
 
 class CertificateService {
@@ -14,49 +14,54 @@ class CertificateService {
     user_id,
     number,
     owner,
-    nik,
     address,
     city,
     province,
     length,
     area,
     issueDate,
+    validator,
+    nip,
   }) {
     try {
       const existNumber = await CertificateRepository.findCertificateByNumber({
         number,
       });
-      if (existNumber) {
-        console.error("The certificate number has been used previously.");
+      const existOwner = await CertificateRepository.findCertificateByOwner({
+        owner,
+      });
+      const existAddress = await CertificateRepository.findCertificateByAddress(
+        {
+          address,
+        }
+      );
+      const existLength = await CertificateRepository.findCertificateByLength({
+        length,
+      });
+      const user = await UserRepository.findUserId(user_id);
+      if (existNumber || existOwner || existAddress || existLength) {
         return {
           status: false,
           statusCode: 400,
-          message: "The certificate number has been used previously.",
+          message: "The certificate has been used previously.",
           data: null,
         };
       }
 
-      if (!fs.existsSync("private_key.pem")) {
-        console.error(
-          "Private key is not available. Please create a private key and save it as 'private_key.pem' in your project directory."
-        );
-        return {
-          status: false,
-          statusCode: 400,
-          message: "Private key is not available.",
-          data: null,
-        };
+      if (!user.private_key || !user.public_key) {
+        const keyPair = generateKeyPair();
+        user.private_key = keyPair.privateKey;
+        user.public_key = keyPair.publicKey;
+        await user.save();
       }
 
-      const privateKey = fs.readFileSync("private_key.pem", "utf8");
-      const publicKey = fs.readFileSync("public_key.pem", "utf8");
-      console.log("public key: " + JSON.stringify(publicKey));
+      const privateKey = user.private_key;
+      const publicKey = user.public_key;
 
       const dataToSign = JSON.stringify({
         user_id,
         number,
         owner,
-        nik,
         address,
         city,
         province,
@@ -89,11 +94,7 @@ class CertificateService {
         signature
       );
 
-      console.log("Is Signature Valid:", isSignatureValid);
-
       if (isSignatureValid) {
-        certificate.isValid = isSignatureValid;
-        await certificate.save();
       } else {
         return {
           status: false,
@@ -107,7 +108,6 @@ class CertificateService {
         user_id,
         number,
         owner,
-        nik,
         address,
         city,
         province,
@@ -115,7 +115,6 @@ class CertificateService {
         area,
         issueDate,
         signature,
-        publicKey,
       };
 
       const newBlock = addBlock(certificate);
@@ -134,15 +133,17 @@ class CertificateService {
           user_id,
           number,
           owner,
-          nik,
           address,
           city,
           province,
           length,
           area,
           issueDate,
-          publicKey: publicKey,
-          signature: signature,
+          validator,
+          nip,
+          signature,
+          isValid: isSignatureValid,
+          hash: newBlock.hash,
         });
 
         return {
@@ -179,6 +180,7 @@ class CertificateService {
   static async transferOwnership({
     number,
     currentOwnerPrivateKey,
+    currentOwnerPublicKey,
     newOwner,
     newUserId,
   }) {
@@ -208,7 +210,6 @@ class CertificateService {
 
       const dataToSign = JSON.stringify(certificate);
 
-      const currentOwnerPublicKey = fs.readFileSync("public_key.pem", "utf8");
       const sign = crypto.createSign("SHA256");
       sign.update(dataToSign);
       certificate.signature = sign.sign(currentOwnerPrivateKey);
@@ -292,14 +293,11 @@ class CertificateService {
 
   static async findBlocksByCertificateNumber({ number }) {
     try {
-      console.log("Number to search:", number);
       const blocks = await BlockRepository.findBlocksByCertificateNumber({
         number,
       });
 
       if (blocks && blocks.length > 0) {
-        // Handle the found blocks (since there can be multiple with the same certificate number)
-        console.log("Blocks found:", blocks);
         return {
           status: true,
           statusCode: 200,
@@ -307,7 +305,6 @@ class CertificateService {
           data: blocks,
         };
       } else {
-        console.log("Blocks not found for number:", number);
         return {
           status: false,
           statusCode: 404,
@@ -326,31 +323,60 @@ class CertificateService {
     }
   }
 
+  static async findCertificateByNumber({ number }) {
+    try {
+      const certificate = await CertificateRepository.findCertificateByNumber({
+        number,
+      });
+
+      if (certificate && certificate.length > 0) {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Success get certificates",
+          data: certificate,
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 400,
+          message: "Cannot get certificates",
+          data: null,
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Internal Server Error",
+        data: null,
+      };
+    }
+  }
+
   static async getOwnershipHistory({ number }) {
     const blocks = await BlockRepository.findBlocksByCertificateNumber({
       number,
     });
-
     if (blocks && blocks.length > 0) {
       const ownershipHistory = [];
       let previousOwner = null;
+      let previousOwnerHash = null;
 
       for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
 
         if (block.data && block.data.owner) {
           if (previousOwner === null) {
-            // Set pemilik pertama
             previousOwner = block.data;
-            ownershipHistory.push({
-              owner: previousOwner,
-              loginHistory: [block.timestamp], // Catat waktu login pertama
-            });
+            previousOwnerHash = block.hash;
           } else if (block.data.owner !== previousOwner) {
-            // Temukan perubahan pemilik
             ownershipHistory.push({
-              previousOwner,
+              previousOwner: previousOwner,
+              previousOwnerHash,
               currentOwner: block.data,
+              currentOwnerHash: block.hash,
               transactionDate: block.timestamp,
             });
             previousOwner = block.data;
@@ -359,21 +385,29 @@ class CertificateService {
       }
 
       if (ownershipHistory.length > 0) {
+        const latestOwnership = ownershipHistory[ownershipHistory.length - 1];
         return {
           status: true,
           statusCode: 200,
           message: "Success get ownership history",
-          data: ownershipHistory,
+          data: latestOwnership,
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 400,
+          message: "There's no ownership history",
+          data: null,
         };
       }
+    } else {
+      return {
+        status: false,
+        statusCode: 400,
+        message: "Cannot get ownership history",
+        data: null,
+      };
     }
-
-    return {
-      status: false,
-      statusCode: 400,
-      message: "Cannot get ownership history",
-      data: null,
-    };
   }
 
   static async getCertificatesByUserId({ user_id }) {
@@ -409,6 +443,65 @@ class CertificateService {
         data: {
           certificates: null,
         },
+      };
+    }
+  }
+
+  static async getCertificateByHash({ hash }) {
+    try {
+      const certificate = await BlockRepository.findBlockByHash({ hash });
+
+      if (!certificate) {
+        return {
+          status: false,
+          statusCode: 404,
+          message: "Certificate not found",
+          data: null,
+        };
+      } else {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Certificate founded",
+          data: certificate[0].data,
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Internal server error",
+        data: null,
+      };
+    }
+  }
+
+  static async getAllCertificates() {
+    try {
+      const certificates = await CertificateRepository.getAllCertificates();
+
+      if (certificates && certificates.length > 0) {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "Certificates were successfully retrieved",
+          data: certificates,
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 404,
+          message: "Certificates could not be retrieved",
+          data: null,
+        };
+      }
+    } catch (error) {
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Couldn't connect to the server",
+        data: null,
       };
     }
   }

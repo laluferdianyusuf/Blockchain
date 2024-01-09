@@ -1,13 +1,15 @@
 const AuthService = require("../services/authService");
 const os = require("os");
 const requestIp = require("request-ip");
+const UserService = require("../services/authService");
 
 const Register = async (req, res) => {
-  const { full_name, username, email, password, phone_number } = req.body;
+  const { full_name, username, nik, email, password, phone_number } = req.body;
 
   const { status, statusCode, message, data } = await AuthService.registerUser({
     full_name,
     username,
+    nik,
     email,
     password,
     phone_number,
@@ -22,34 +24,33 @@ const Register = async (req, res) => {
 
 const Login = async (req, res) => {
   const { email, password, phone_number, otp_code } = req.body;
+  const getIpAddress = requestIp.getClientIp;
+  const usersAgent = req.get("user-agent");
+  const useragent = require("useragent");
+  const agent = useragent.parse(usersAgent);
 
-  const login = await AuthService.sendLoginOTP({
+  const deviceName = os.hostname();
+  const deviceInfo = agent.os.toString();
+  const userAgent = agent.toAgent();
+  const ipAddress = getIpAddress(req);
+  const loginTime = new Date();
+
+  const { status, statusCode, message, data } = await AuthService.sendLoginOTP({
     email,
     password,
     phone_number,
     otp_code,
+    deviceName,
+    deviceInfo,
+    userAgent,
+    ipAddress,
+    loginTime,
   });
-  if (login.status) {
-    const getIpAddress = requestIp.getClientIp;
-    const userAgent = req.get("user-agent");
-    const useragent = require("useragent");
-    const agent = useragent.parse(userAgent);
-    const loginHistory = {
-      userId: login.data.user._id,
-      deviceName: os.hostname(),
-      deviceInfo: agent.os.toString() || "Unknown device",
-      userAgent: agent.toAgent(),
 
-      ipAddress: getIpAddress(req),
-      loginTime: new Date(),
-    };
-    await AuthService.createHistory(loginHistory);
-  }
-
-  res.status(login.statusCode).send({
-    status: login.status,
-    message: login.message,
-    data: login.data,
+  res.status(statusCode).send({
+    status: status,
+    message: message,
+    data: data,
   });
 };
 
@@ -70,8 +71,9 @@ const verifyOTP = async (req, res) => {
 
 const getLoginHistory = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { status, statusCode, message, data } =
-      await AuthService.getAllLoginHistory();
+      await AuthService.getAllLoginHistory({ userId });
     res.status(statusCode).send({
       status,
       message,
@@ -122,6 +124,20 @@ const logout = async (req, res) => {
   }
 };
 
+const filterUser = async (req, res) => {
+  const { full_name, username } = req.query;
+
+  const { status, statusCode, message, data } = await UserService.filterUser({
+    full_name,
+    username,
+  });
+  res.status(statusCode).send({
+    status: status,
+    message: message,
+    data: data,
+  });
+};
+
 module.exports = {
   Register,
   Login,
@@ -129,4 +145,5 @@ module.exports = {
   getLoginHistory,
   currentUser,
   logout,
+  filterUser,
 };

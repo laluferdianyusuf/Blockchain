@@ -22,7 +22,7 @@ export default function RegisterForm() {
   const emailField = useRef();
   const passwordField = useRef();
   const phoneNumberField = useRef();
-
+  const nikField = useRef();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -42,11 +42,12 @@ export default function RegisterForm() {
     e.preventDefault();
     try {
       const registerPayload = {
-        full_name: fullnameField,
-        username: usernameField,
-        email: emailField,
-        password: passwordField,
-        phone_number: phoneNumberField,
+        full_name: fullnameField.current.value,
+        username: usernameField.current.value,
+        nik: nikField.current.value,
+        email: emailField.current.value,
+        password: passwordField.current.value,
+        phone_number: phoneNumberField.current.value,
       };
 
       const response = await dispatch(register(registerPayload));
@@ -117,13 +118,20 @@ export default function RegisterForm() {
                   </Box>
                   <Box className="input-box">
                     <span className="icon">
+                      <PiIdentificationBadgeFill />
+                    </span>
+                    <input type="text" ref={nikField} required />
+                    <label>Nik</label>
+                  </Box>
+                </Box>
+                <Box>
+                  <Box className="input-box">
+                    <span className="icon">
                       <TbMailFilled />
                     </span>
                     <input type="email" ref={emailField} required />
                     <label>Email</label>
                   </Box>
-                </Box>
-                <Box>
                   <Box className="input-box">
                     <span className="icon">
                       <Button
@@ -160,18 +168,17 @@ export default function RegisterForm() {
                     <span className="icon">
                       <MdOutlineDialpad />
                     </span>
-                    <input required ref={phoneNumberField} />
+                    <input required defaultValue="+62" ref={phoneNumberField} />
                     <label>Phone Number</label>
                   </Box>
-
-                  <button type="submit" className="btn">
-                    Sign Up
-                  </button>
                 </Box>
               </Box>
+              <button type="submit" className="btn">
+                Sign Up
+              </button>
 
               <Box className="login-register">
-                <span>
+                <p>
                   Already have an account?
                   <Link
                     onClick={handleClickLink}
@@ -204,7 +211,7 @@ export default function RegisterForm() {
                       />
                     )}
                   </Link>
-                </span>
+                </p>
               </Box>
             </form>
           </Box>

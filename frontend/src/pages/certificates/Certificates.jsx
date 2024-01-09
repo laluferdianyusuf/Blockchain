@@ -1,15 +1,15 @@
 import React from "react";
 import Navbar from "../../components/Navbar";
-import OwnerHistory from "../../components/History";
+import Certificates from "../../components/Certificates";
 
-export default function History() {
+export default function CertificatesData() {
   return (
     <>
       <div>
         <Navbar />{" "}
       </div>
       <div>
-        <OwnerHistory />{" "}
+        <Certificates />{" "}
       </div>
     </>
   );

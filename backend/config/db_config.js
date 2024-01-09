@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const db_name = "new_block_db";
+const db_name = "Blockchain_TA";
 const mongoURI = `mongodb://127.0.0.1:27017/${db_name}`;
 
 mongoose.connect(mongoURI, {

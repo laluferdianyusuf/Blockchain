@@ -5,19 +5,44 @@ const jwt = require("jsonwebtoken");
 const SALT_ROUND = 10;
 const { JWT } = require("../lib/const");
 const { generateKeyPair } = require("../blockchain/blockchain");
+const { blockchain, addBlock } = require("../blockchain/userBlock");
+const BlockRepository = require("../repositories/blockRepository");
 require("dotenv").config();
 
 class UserService {
   static async registerUser({
     full_name,
     username,
+    nik,
     email,
     password,
     phone_number,
   }) {
     try {
       const existingEmail = await UserRepository.FindByEmail({ email });
-      console.log(existingEmail);
+
+      const dataToSign = JSON.stringify({
+        full_name,
+        username,
+        nik,
+        email,
+        password,
+        phone_number,
+      });
+
+      const lastBlockData = JSON.stringify(
+        blockchain[blockchain.length - 1].data
+      );
+
+      if (lastBlockData === dataToSign) {
+        console.error("Data cannot be used in consecutive transactions.");
+        return {
+          status: false,
+          statusCode: 400,
+          message: "Data cannot be used in consecutive transactions.",
+          data: null,
+        };
+      }
 
       if (existingEmail) {
         return {
@@ -27,28 +52,34 @@ class UserService {
           data: { user: null },
         };
       } else {
-        // Enkripsi kata sandi
         const hashedPassword = await bcrypt.hash(password, SALT_ROUND);
-        const { publicKey } = generateKeyPair();
 
-        // Buat entitas pengguna baru
         const user = await UserRepository.CreateUser({
           full_name,
           username,
+          nik,
           email,
           password: hashedPassword,
           phone_number,
           otp_code: null,
           otp_enable: false,
           private_key: null,
-          public_key: publicKey,
+          public_key: null,
         });
-
+        const newBlock = addBlock(user);
+        const blocks = await BlockRepository.saveUserToBlock(
+          newBlock.index,
+          newBlock.previousHash,
+          newBlock.timestamp,
+          newBlock.data,
+          newBlock.nonce,
+          newBlock.hash
+        );
         return {
           status: true,
           statusCode: 200,
           message: "Registration successful",
-          data: { user: user },
+          data: { user: user, block: blocks },
         };
       }
     } catch (error) {
@@ -61,9 +92,21 @@ class UserService {
     }
   }
 
-  static async sendLoginOTP({ email, password, phone_number, otp_code }) {
+  static async sendLoginOTP({
+    email,
+    password,
+    phone_number,
+    otp_code,
+    userId,
+    deviceName,
+    deviceInfo,
+    userAgent,
+    ipAddress,
+    loginTime,
+  }) {
     try {
       const user = await UserRepository.FindByEmail({ email });
+      userId = user.id;
 
       if (!user) {
         return {
@@ -73,6 +116,7 @@ class UserService {
           data: { user: null },
         };
       }
+
       const isUserMatch = await bcrypt.compare(password, user.password);
 
       if (isUserMatch) {
@@ -82,7 +126,6 @@ class UserService {
           ).toString();
           user.otp_code = generatedOTP;
           user.otp_enable = true;
-          user.private_key = null;
           await user.save();
 
           await UserRepository.sendOTPviaSMS(phone_number, generatedOTP);
@@ -107,12 +150,29 @@ class UserService {
               expiresIn: JWT.EXPIRED,
             }
           );
-          const { privateKey } = generateKeyPair();
-
+          const keyPair = generateKeyPair();
+          user.private_key = keyPair.privateKey;
+          user.public_key = keyPair.publicKey;
           user.otp_enable = false;
           user.otp_code = null;
-          user.private_key = privateKey;
           await user.save();
+          const userHistory = await LoginHistoryRepository.createLoginHistory({
+            userId,
+            deviceName,
+            deviceInfo,
+            userAgent,
+            ipAddress,
+            loginTime,
+          });
+          const newBlock = addBlock(user);
+          const blocks = await BlockRepository.saveUserToBlock(
+            newBlock.index,
+            newBlock.previousHash,
+            newBlock.timestamp,
+            newBlock.data,
+            newBlock.nonce,
+            newBlock.hash
+          );
 
           return {
             status: true,
@@ -121,7 +181,9 @@ class UserService {
             data: {
               user: user,
               token: token,
+              userHistory,
               otp_status: false,
+              block: blocks,
             },
           };
         } else {
@@ -183,12 +245,10 @@ class UserService {
         };
       }
 
-      // Jika semua verifikasi berhasil, nonaktifkan OTP dan simpan perubahan
       user.otp_enable = false;
       user.otp_code = null;
       await user.save();
 
-      // Generate JWT token
       const token = jwt.sign(
         {
           id: user.id,
@@ -206,7 +266,7 @@ class UserService {
         message: "OTP verification successful",
         data: {
           user: user,
-          token: token, // Mengirimkan token ke pengguna
+          token: token,
         },
       };
     } catch (error) {
@@ -219,54 +279,11 @@ class UserService {
     }
   }
 
-  static async createHistory(loginHistory) {
+  static async getAllLoginHistory({ userId }) {
     try {
-      const userId = loginHistory.userId;
-
-      const existingHistory = await LoginHistoryRepository.findById({
-        id: userId,
+      const loginHistory = await LoginHistoryRepository.getAllLoginHistory({
+        userId,
       });
-
-      if (existingHistory) {
-        existingHistory.deviceName = loginHistory.deviceName;
-        existingHistory.deviceInfo = loginHistory.deviceInfo;
-        existingHistory.userAgent = loginHistory.userAgent;
-        existingHistory.ipAddress = loginHistory.ipAddress;
-        existingHistory.loginTime = loginHistory.loginTime;
-
-        await existingHistory.save();
-
-        return {
-          status: true,
-          statusCode: 200,
-          message: "Successfully updated",
-          data: { user: existingHistory },
-        };
-      } else {
-        const userHistory = await LoginHistoryRepository.createLoginHistory(
-          loginHistory
-        );
-        return {
-          status: true,
-          statusCode: 200,
-          message: "Successfully created",
-          data: { user: userHistory },
-        };
-      }
-    } catch (error) {
-      console.error(error);
-      return {
-        status: false,
-        statusCode: 500,
-        message: "Internal Server Error",
-        data: { user: null },
-      };
-    }
-  }
-
-  static async getAllLoginHistory() {
-    try {
-      const loginHistory = await LoginHistoryRepository.getAllLoginHistory();
       if (loginHistory) {
         return {
           status: true,
@@ -320,6 +337,36 @@ class UserService {
         status: false,
         statusCode: 500,
         message: "Error deleting history",
+        data: null,
+      };
+    }
+  }
+
+  static async filterUser({ full_name, username }) {
+    try {
+      const user = await UserRepository.filterUser({ full_name, username });
+
+      if (user) {
+        return {
+          status: true,
+          statusCode: 200,
+          message: "User founded successfully",
+          data: user,
+        };
+      } else {
+        return {
+          status: false,
+          statusCode: 400,
+          message: "Cannot find user",
+          data: null,
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        status: false,
+        statusCode: 500,
+        message: "Internal Server Error",
         data: null,
       };
     }

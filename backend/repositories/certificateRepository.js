@@ -1,35 +1,36 @@
 const Certificate = require("../models/certificateModel");
+const User = require("../models/userModel");
 class CertificateRepository {
   static async generateCertificate({
     user_id,
     number,
     owner,
-    nik,
     address,
     city,
     province,
     length,
-    area,
     issueDate,
-    publicKey,
+    validator,
+    nip,
     signature,
     isValid,
+    hash,
   }) {
     try {
       const certificate = new Certificate({
         user_id,
         number,
         owner,
-        nik,
         address,
         city,
         province,
         length,
-        area,
         issueDate,
-        publicKey,
+        validator,
+        nip,
         signature,
         isValid,
+        hash,
       });
 
       await certificate.save();
@@ -75,6 +76,30 @@ class CertificateRepository {
     const certificate = await Certificate.findOne({ number });
     return certificate;
   }
+  static async findCertificateByOwner({ owner }) {
+    const certificate = await Certificate.findOne({ owner });
+    return certificate;
+  }
+  static async findCertificateByAddress({ address }) {
+    const certificate = await Certificate.findOne({ address });
+    return certificate;
+  }
+  static async findCertificateByCity({ city }) {
+    const certificate = await Certificate.findOne({ city });
+    return certificate;
+  }
+  static async findCertificateByProvince({ province }) {
+    const certificate = await Certificate.findOne({ province });
+    return certificate;
+  }
+  static async findCertificateByLength({ length }) {
+    const certificate = await Certificate.findOne({ length });
+    return certificate;
+  }
+  static async findCertificateByArea({ area }) {
+    const certificate = await Certificate.findOne({ area });
+    return certificate;
+  }
 
   static async getOwnershipHistoryByNumber(number) {
     return Certificate.find({ number }).select("owner timestamp");
@@ -83,12 +108,26 @@ class CertificateRepository {
   static async getCertificatesByUserId({ user_id }) {
     try {
       const certificates = await Certificate.find({ user_id });
-      console.log(certificates);
       return certificates;
     } catch (error) {
       console.error("Can't get certificates:", error.message);
       throw error;
     }
+  }
+
+  static async getCertificateBySignature({ signature }) {
+    console.log(signature);
+    const certificateBuffer = Buffer.from(signature, "base64");
+
+    const certificate = await Certificate.find({
+      signature: certificateBuffer,
+    });
+    return certificate;
+  }
+
+  static async getAllCertificates() {
+    const Certificates = await Certificate.find();
+    return Certificates;
   }
 }
 

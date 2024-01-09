@@ -9,6 +9,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Username can't be empty"],
   },
+  nik: {
+    type: Number,
+    required: [true, "NIK can't be empty"],
+  },
   email: {
     type: String,
     required: [true, "Email can't be empty"],

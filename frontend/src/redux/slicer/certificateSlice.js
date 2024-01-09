@@ -31,11 +31,11 @@ export const generateCertificate = createAsyncThunk(
 // transfer ownership
 export const transferOwner = createAsyncThunk(
   "certificate/transferOwner",
-  async (createData) => {
+  async (number, { createData }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.put(
-        `${url_api}/api/certificates/transfer/owner`,
+        `${url_api}/api/certificates/transfer-owner/${number}`,
         createData,
         {
           headers: {
@@ -46,6 +46,7 @@ export const transferOwner = createAsyncThunk(
           },
         }
       );
+      console.log(response);
       return response.data;
     } catch (error) {
       throw error.response.data;
@@ -60,7 +61,7 @@ export const findCertificateByNumber = createAsyncThunk(
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `${url_api}/api/certificates/${number}`,
+        `${url_api}/api/v1/certificates/${number}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -70,7 +71,6 @@ export const findCertificateByNumber = createAsyncThunk(
           },
         }
       );
-      console.log(response);
       return response.data;
     } catch (error) {
       throw error.response.data;
@@ -83,6 +83,7 @@ export const ownershipHistory = createAsyncThunk(
   "certificate/ownership-history",
   async (number) => {
     try {
+      const token = localStorage.getItem("token");
       const response = await axios.get(
         `${url_api}/api/certificates/owner/history/${number}`,
         {
@@ -90,6 +91,7 @@ export const ownershipHistory = createAsyncThunk(
             "Content-Type": "application/json",
             Accept: "application/json",
             "Access-Control-Allow-Credentials": true,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -104,11 +106,11 @@ export const ownershipHistory = createAsyncThunk(
 // get certificate by user id
 export const getCertificatesByUserId = createAsyncThunk(
   "certificate/getCertificatesByUserId",
-  async (userId) => {
+  async (user_id) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `${url_api}/api/certificates/user/${userId}`,
+        `${url_api}/api/certificates/user/${user_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -125,14 +127,51 @@ export const getCertificatesByUserId = createAsyncThunk(
   }
 );
 
+// get certificates
+export const getAllCertificates = createAsyncThunk(
+  "certificate/getAllCertificates",
+  async () => {
+    try {
+      const response = await axios.get(`${url_api}/v1/api/certificates-all`, {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response.data;
+    }
+  }
+);
+
+// Get validate certificates
+export const validate = createAsyncThunk(
+  "certificate/validate",
+  async (hash) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${url_api}/v1/api/certificates/${hash}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Access-Control-Allow-Credentials": true,
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log(response);
+      return response.data;
+    } catch (error) {
+      throw error.response.data;
+    }
+  }
+);
+
 const initialState = {
-  certificates: {
-    loading: false,
-    error: null,
-    data: {
-      certificates: [],
-    },
-  },
+  certificates: {},
 };
 
 const certificateSlice = createSlice({
@@ -142,76 +181,51 @@ const certificateSlice = createSlice({
   extraReducers: (builder) => {
     // Generate a new certificate
     builder
-      .addCase(generateCertificate.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(generateCertificate.pending, (state) => {})
       .addCase(generateCertificate.fulfilled, (state, action) => {
-        state.createResult = action.payload;
+        state.certificates = action.payload;
       })
-      .addCase(generateCertificate.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(generateCertificate.rejected, (state, action) => {});
 
     // Transfer Ownership
     builder
-      .addCase(transferOwner.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(transferOwner.pending, (state) => {})
       .addCase(transferOwner.fulfilled, (state, action) => {
-        state.createResult = action.payload;
+        state.certificates = action.payload;
       })
-      .addCase(transferOwner.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(transferOwner.rejected, (state, action) => {});
 
     // Get certificate by number
     builder
-      .addCase(findCertificateByNumber.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(findCertificateByNumber.pending, (state) => {})
       .addCase(findCertificateByNumber.fulfilled, (state, action) => {
         state.certificates = action.payload;
-        state.loading = false;
       })
-      .addCase(findCertificateByNumber.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(findCertificateByNumber.rejected, (state, action) => {});
 
     // ownership history
     builder
-      .addCase(ownershipHistory.pending, (state, action) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(ownershipHistory.pending, (state, action) => {})
       .addCase(ownershipHistory.fulfilled, (state, action) => {
         state.certificates = action.payload;
-        state.loading = false;
       })
-      .addCase(ownershipHistory.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(ownershipHistory.rejected, (state, action) => {});
 
     // Get certificates by user ID
     builder
-      .addCase(getCertificatesByUserId.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(getCertificatesByUserId.pending, (state) => {})
       .addCase(getCertificatesByUserId.fulfilled, (state, action) => {
         state.certificates = action.payload;
-        state.loading = false;
       })
-      .addCase(getCertificatesByUserId.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(getCertificatesByUserId.rejected, (state, action) => {});
+
+    // validate
+    builder
+      .addCase(validate.pending, (state, action) => {})
+      .addCase(validate.fulfilled, (state, action) => {
+        state.certificates = action.payload;
+      })
+      .addCase(validate.rejected, (state, action) => {});
   },
 });
 

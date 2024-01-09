@@ -154,7 +154,7 @@ export default function LoginForm() {
               </button>
 
               <Box className="login-register">
-                <span>
+                <p>
                   Don't have an account?
                   <Link
                     onClick={handleClickLink}
@@ -187,7 +187,7 @@ export default function LoginForm() {
                       />
                     )}
                   </Link>
-                </span>
+                </p>
               </Box>
             </form>
           </Box>

@@ -1,17 +1,18 @@
+const CertificateRepository = require("../repositories/certificateRepository");
 const CertificateService = require("../services/certificateService");
 
 const generateCertificate = async (req, res) => {
   const {
     number,
     owner,
-    nik,
     address,
     city,
     province,
     length,
     area,
     issueDate,
-    publicKey,
+    validator,
+    nip,
     signature,
   } = req.body;
   const user_id = req.user.id;
@@ -22,14 +23,14 @@ const generateCertificate = async (req, res) => {
         user_id,
         number,
         owner,
-        nik,
         address,
         city,
         province,
         length,
         area,
         issueDate,
-        publicKey,
+        validator,
+        nip,
         signature,
       });
 
@@ -51,12 +52,15 @@ const generateCertificate = async (req, res) => {
 };
 
 const transferCertificateOwnership = async (req, res) => {
-  const { number, currentOwnerPrivateKey, newOwner, newUserId } = req.body;
+  const { number } = req.params;
+  const { currentOwnerPrivateKey, currentOwnerPublicKey, newOwner, newUserId } =
+    req.body;
   try {
     const { status, statusCode, message, data } =
       await CertificateService.transferOwnership({
         number,
         currentOwnerPrivateKey,
+        currentOwnerPublicKey,
         newOwner,
         newUserId,
       });
@@ -98,6 +102,26 @@ const findCertificateByNumber = async (req, res) => {
   }
 };
 
+const findCertificatesByNumber = async (req, res) => {
+  try {
+    const { number } = req.params;
+    const { status, statusCode, message, data } =
+      await CertificateService.findCertificateByNumber({ number });
+
+    res
+      .status(statusCode)
+      .send({ status: status, message: message, data: data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      statusCode: 500,
+      message: "Internal Server Error",
+      data: null,
+    });
+  }
+};
+
 const getOwnershipHistory = async (req, res) => {
   try {
     const { number } = req.params;
@@ -122,7 +146,6 @@ const getOwnershipHistory = async (req, res) => {
 const getCertificateByUserId = async (req, res) => {
   try {
     const user_id = req.user._id;
-    console.log(user_id);
     const { status, statusCode, message, data } =
       await CertificateService.getCertificatesByUserId({ user_id });
 
@@ -144,10 +167,30 @@ const getCertificateByUserId = async (req, res) => {
   }
 };
 
+const getCertificateByHash = async (req, res) => {
+  const { hash } = req.params;
+  const { status, statusCode, message, data } =
+    await CertificateService.getCertificateByHash({ hash });
+  res.status(statusCode).send({
+    status: status,
+    message: message,
+    data: data,
+  });
+};
+
+const getAllCertificates = async (req, res) => {
+  const { status, statusCode, message, data } =
+    await CertificateService.getAllCertificates();
+  res.status(statusCode).send({ status: status, message: message, data: data });
+};
+
 module.exports = {
   generateCertificate,
   transferCertificateOwnership,
   getOwnershipHistory,
   findCertificateByNumber,
   getCertificateByUserId,
+  findCertificatesByNumber,
+  getCertificateByHash,
+  getAllCertificates,
 };

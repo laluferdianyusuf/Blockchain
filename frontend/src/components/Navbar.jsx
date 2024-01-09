@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import {
-  Box,
-  Typography,
-  Button,
-  styled,
-  CircularProgress,
-} from "@mui/material";
+import { Box, Button, styled, CircularProgress } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { getUsers } from "../redux/slicer/userSlice";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -25,9 +19,10 @@ const StyledNavbar = styled(Box)`
   justify-content: space-between;
   align-items: center;
   z-index: 99;
+  background: #fff;
 `;
 
-const Brand = styled(Typography)`
+const Brand = styled(Link)`
   font-size: 1.5em;
   color: darkgreen;
   user-select: none;
@@ -43,32 +38,13 @@ const NavLink = styled(Link)`
   transition: background-color 0.3s;
   align-self: center;
   text-align: center;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: -4px;
-    width: 0;
-    height: 3px;
-    background: #fff;
-    border-radius: 5px;
-    transition: width 0.5s;
-  }
-
-  &:hover {
-    transition: 0.5s ease-in-out;
-  }
-
-  &:hover::before {
-    width: 100%;
-  }
 `;
 
 const StyledMenuButton = styled(MenuButton)`
   border: none;
   background: none;
   cursor: pointer;
+  padding: 0;
   &:hover {
     background: none;
   }
@@ -85,6 +61,7 @@ const UserAvatar = styled(Box)`
   justify-content: center;
   align-items: center;
   display: flex;
+  width: 50px;
 
   &:hover {
     background: transparent;
@@ -100,12 +77,15 @@ const ButtonLink = styled(Link)`
   outline: none;
   cursor: pointer;
   font-size: 1em;
-  color: darkgreen;
+  color: black;
   font-weight: 600;
   transition: 0.5s ease;
   text-align: center;
   align-self: center;
   padding: 5px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   &:hover {
     background: transparent;
   }
@@ -116,7 +96,7 @@ const LogoutButton = styled(Button)`
   background: none;
   cursor: pointer;
   font-size: 1em;
-  color: darkgreen;
+  color: darkred;
   font-weight: 600;
   transition: 0.5s ease;
   text-align: center;
@@ -140,7 +120,7 @@ export default function Navbar() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      window.location.href = "/user/profile";
+      navigate("/user/profile"); // Menggunakan navigate dari React Router
     }, 1000);
   };
 
@@ -181,19 +161,24 @@ export default function Navbar() {
     }, 1000);
   };
 
-  const handleBackClick = () => {
+  const handleBackClick = (e) => {
+    e.preventDefault();
     navigate(-1);
+  };
+
+  const handleClickRegister = (e) => {
+    e.preventDefault();
+    navigate("/user/register");
   };
 
   return (
     <StyledNavbar>
       <Box sx={{ display: "flex", gap: "20px" }}>
-        <Brand>Incrypt</Brand>
-        <NavLink>Validate</NavLink>
-        <NavLink>Search</NavLink>
+        <Brand to="/">Incrypt</Brand>
+        <NavLink to="/validate-certificate">Validate</NavLink>
         <NavLink to="/certificate/generate">Generate</NavLink>
-        <NavLink to="/certificate/transfer-ownership">Swapping</NavLink>
         <NavLink to="/certificate/owner/history">History</NavLink>
+        <NavLink to="/certificate/all">Certificates</NavLink>
       </Box>
       <Box sx={{ display: "flex" }}>
         {showBackButton && (
@@ -221,13 +206,10 @@ export default function Navbar() {
               </UserAvatar>
             </StyledMenuButton>
             <Menu>
-              {showBackButton ? (
-                ""
-              ) : (
-                <MenuItem>
-                  <ButtonLink onClick={handleClickLink}>Profile</ButtonLink>
-                </MenuItem>
-              )}
+              <MenuItem>
+                <ButtonLink onClick={handleClickLink}>Profile</ButtonLink>
+              </MenuItem>
+
               <MenuItem>
                 <LogoutButton onClick={handleLogout}>Log Out</LogoutButton>
               </MenuItem>
@@ -271,7 +253,7 @@ export default function Navbar() {
             {isLoggedIn ? (
               ""
             ) : (
-              <Box>
+              <Box sx={{ display: "flex" }}>
                 <ButtonLink to="/user/login">Sign in</ButtonLink>
                 <Button
                   sx={{
@@ -288,7 +270,7 @@ export default function Navbar() {
                       background: "darkgreen",
                     },
                   }}
-                  to="/user/login/register"
+                  onClick={handleClickRegister}
                 >
                   Sign up
                 </Button>

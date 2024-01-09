@@ -14,10 +14,6 @@ const CertificateSchema = new mongoose.Schema({
     type: String,
     required: [true, "Owner can't be empty"],
   },
-  nik: {
-    type: Number,
-    required: [true, "NIK can't be empty"],
-  },
   address: {
     type: String,
     required: [true, "Land address can't be empty"],
@@ -34,16 +30,17 @@ const CertificateSchema = new mongoose.Schema({
     type: Number,
     required: [true, "Length of the land can't be empty"],
   },
-  area: {
-    type: Number,
-    required: [true, "Land area can't be empty"],
-  },
   issueDate: {
     type: Date,
     required: [true, "Issue date can't be empty"],
   },
-  publicKey: {
+  validator: {
     type: String,
+    required: [true, "Validator can't be empty"],
+  },
+  nip: {
+    type: String,
+    required: [true, "nip can't be empty"],
   },
   signature: {
     type: Buffer,
@@ -51,6 +48,9 @@ const CertificateSchema = new mongoose.Schema({
   isValid: {
     type: Boolean,
     default: false,
+  },
+  hash: {
+    type: String,
   },
 });
 

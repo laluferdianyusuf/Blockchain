@@ -6,6 +6,7 @@ class UserRepository {
   static async CreateUser({
     full_name,
     username,
+    nik,
     email,
     password,
     phone_number,
@@ -17,6 +18,7 @@ class UserRepository {
     const createUser = new UserModels({
       full_name,
       username,
+      nik,
       email,
       password,
       phone_number,
@@ -60,6 +62,21 @@ class UserRepository {
     } catch (error) {
       return false;
     }
+  }
+
+  static async filterUser({ full_name, username }) {
+    const query = {};
+
+    if (full_name) {
+      query.full_name = new RegExp(full_name, "i");
+    }
+
+    if (username) {
+      query.username = new RegExp(username, "i");
+    }
+
+    const userToFilter = await UserModels.find(query);
+    return userToFilter;
   }
 }
 

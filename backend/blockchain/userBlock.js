@@ -1,6 +1,5 @@
 const { SHA256 } = require("crypto-js");
 const fs = require("fs");
-const crypto = require("crypto");
 
 class Block {
   constructor(index, previousHash, timestamp, data, nonce, hash, difficulty) {
@@ -34,16 +33,16 @@ const createGenesisBlock = () => {
       Date.now().toString(),
       "Genesis Block",
       nonce.toString()
-    )
+    ),
+    4
   );
 };
 
 let blockchain = [];
-const usedCertificateNumbers = new Set();
 
 const loadBlockchain = () => {
   try {
-    const data = fs.readFileSync("blockchain.json", "utf8");
+    const data = fs.readFileSync("blockchainUser.json", "utf8");
     blockchain = JSON.parse(data);
   } catch (err) {
     blockchain = [createGenesisBlock()];
@@ -53,7 +52,7 @@ const loadBlockchain = () => {
 const saveBlockchain = () => {
   try {
     fs.writeFileSync(
-      "blockchain.json",
+      "blockchainUser.json",
       JSON.stringify(blockchain, null, 4),
       "utf8"
     );
@@ -63,26 +62,6 @@ const saveBlockchain = () => {
 };
 
 loadBlockchain();
-
-let privateKey = "";
-let publicKey = "";
-const generateKeyPair = () => {
-  const keyPair = crypto.generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: {
-      type: "spki",
-      format: "pem",
-    },
-    privateKeyEncoding: {
-      type: "pkcs1",
-      format: "pem",
-    },
-  });
-  privateKey = keyPair.privateKey;
-  publicKey = keyPair.publicKey;
-
-  return { privateKey, publicKey };
-};
 
 const mineBlock = (index, previousHash, timestamp, data, difficulty) => {
   let nonce = 0;
@@ -97,15 +76,29 @@ const mineBlock = (index, previousHash, timestamp, data, difficulty) => {
   return { nonce, hash };
 };
 
-const addBlock = (data) => {
-  const keyPair = generateKeyPair();
-  const privateKey = keyPair.privateKey;
-  const publicKey = keyPair.publicKey;
-  if (usedCertificateNumbers.has(data.number)) {
-    console.error("Certificate number has been used.");
-    return null;
-  }
+const isChainValid = () => {
+  for (let i = 1; i < blockchain.length; i++) {
+    const currentBlock = blockchain[i];
+    const previousBlock = blockchain[i - 1];
 
+    if (
+      currentBlock.hash !==
+        calculateHash(
+          currentBlock.index,
+          currentBlock.previousHash,
+          currentBlock.timestamp,
+          currentBlock.data,
+          currentBlock.nonce
+        ) ||
+      currentBlock.previousHash !== previousBlock.hash
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const addBlock = (data) => {
   const previousBlock = blockchain[blockchain.length - 1];
   const index = previousBlock.index + 1;
   const timestamp = Date.now().toString();
@@ -118,16 +111,6 @@ const addBlock = (data) => {
     data,
     4
   );
-  const endMiningTime = new Date().getTime();
-  const miningTime = endMiningTime - startMiningTime;
-  console.log(`Mining time: ${miningTime} ms`);
-
-  const dataToSign = JSON.stringify(data);
-
-  const sign = crypto.createSign("RSA-SHA256");
-  sign.update(dataToSign);
-  sign.end();
-  const signature = sign.sign(privateKey);
 
   const newBlock = new Block(
     index,
@@ -135,42 +118,27 @@ const addBlock = (data) => {
     timestamp,
     data,
     nonce,
-    hash
+    hash,
+    4
   );
 
-  const isSignatureValid = verifySignature(dataToSign, publicKey, signature);
-  console.log("Is block valid?", isSignatureValid);
+  const endMiningTime = new Date().getTime();
+  const miningTime = endMiningTime - startMiningTime;
+  console.log(`Mining time: ${miningTime} ms`);
 
-  if (isSignatureValid) {
+  const isValid = isChainValid();
+
+  if (isValid) {
     blockchain.push(newBlock);
-    usedCertificateNumbers.add(data.number);
     saveBlockchain();
   } else {
-    console.error("Digital signature is not valid.");
+    console.error("Not Valid");
   }
 
-  return isSignatureValid ? newBlock : null;
-};
-
-const verifySignature = (data, publicKey, signature) => {
-  try {
-    if (!publicKey || !signature) {
-      console.error("Public key or signature is undefined.");
-      return false;
-    }
-
-    const verify = crypto.createVerify("RSA-SHA256");
-    verify.update(data);
-    return verify.verify(publicKey, signature);
-  } catch (error) {
-    console.error("Error verifying signature:", error);
-    return false;
-  }
+  return isValid ? newBlock : null;
 };
 
 module.exports = {
   blockchain,
   addBlock,
-  generateKeyPair,
-  verifySignature,
 };

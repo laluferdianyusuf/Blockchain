@@ -143,7 +143,7 @@ code {
 .wrapper.wrapper-register {
   position: relative;
   width: 500px;
-  height: 450px;
+  height: 470px;
   border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 20px;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
@@ -155,7 +155,7 @@ code {
 
 .wrapper.wrapper-generate {
   position: relative;
-  width: 700px;
+  width: 800px;
   height: 480px;
   border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 20px;
@@ -164,6 +164,20 @@ code {
   justify-content: center;
   overflow: hidden;
   transition: transform 0.5s ease, height 0.2s ease;
+}
+.wrapper.wrapper-transfer {
+  position: relative;
+  width: 900px;
+  height: 500px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 0.5s ease, height 0.2s ease;
+  margin-top: 70px;
+  overflow-y: auto;
 }
 
 .wrapper.active {
@@ -286,4 +300,60 @@ code {
 
 .login-register p a:hover {
   text-decoration: underline;
+}
+
+.input-wrapper {
+  width: 80%;
+  height: 2.5rem;
+  border: none;
+  border-radius: 10px;
+  padding: 0 15px;
+  box-shadow: 0px 0px 8px #ddd;
+  background-color: white;
+  display: flex;
+  align-items: center;
+}
+
+input {
+  background-color: transparent;
+  border: none;
+  height: 100%;
+  font-size: 1.25rem;
+  width: 100%;
+  margin-left: 5px;
+}
+
+input:focus {
+  outline: none;
+}
+
+#search-icon {
+  color: #2b0342;
+  margin-right: 10px;
+}
+
+.results-list {
+  width: 80%;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0px 0px 8px #ddd;
+  border-radius: 10px;
+  margin-top: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search-result {
+  padding: 10px 20px;
+  color: #2b0342;
+  text-transform: capitalize;
+}
+
+.search-result:hover {
+  background-color: #efefef;
+}
+
+.css-kl5uk3 {
+  justify-content: center;
 }

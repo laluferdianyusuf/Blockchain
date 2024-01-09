@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Container,
   Box,
@@ -15,9 +15,13 @@ import {
 } from "@mui/material";
 import { getUsers } from "../redux/slicer/userSlice";
 import { getLoginHistory, deleteHistory } from "../redux/slicer/historySlice";
+import { getCertificatesByUserId } from "../redux/slicer/certificateSlice";
+import { Link } from "react-router-dom";
+import QRCode from "qrcode.react";
 
 export default function ProfileUser() {
   const dispatch = useDispatch();
+  const certificates = useSelector((state) => state.certificates);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState({
     username: "",
@@ -27,7 +31,6 @@ export default function ProfileUser() {
   const [loginHistory, setLoginHistory] = useState([]);
 
   const handleDeleteHistory = async (id) => {
-    console.log(id);
     if (id) {
       const success = await dispatch(deleteHistory(id));
       if (success) {
@@ -65,6 +68,215 @@ export default function ProfileUser() {
     fetchData();
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(getCertificatesByUserId(user.id));
+  }, [dispatch, user.id]);
+
+  const handleSeeCertificateLink = (e) => {
+    e.preventDefault();
+    window.location.href = "/certificate/all";
+  };
+
+  const renderCertificates = () => {
+    if (
+      certificates.certificates.data &&
+      certificates.certificates.data.certificates
+    ) {
+      const certificateData = certificates.certificates.data.certificates;
+
+      return Array.isArray(certificateData)
+        ? certificateData.map((certificate, index) => {
+            const qrValue = `${certificate.signature}`;
+            return (
+              <>
+                <Paper
+                  key={index}
+                  sx={{
+                    width: "50%",
+                    padding: "15px",
+                    boxShadow: "0 0 10px rgba(0,0,0,1)",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      textAlign: "center",
+                      margin: "20px 0",
+                      fontWeight: "600",
+                      fontSize: "8px",
+                    }}
+                  >
+                    Sertifikat Hak Milik Tanah
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      borderBottom: "4px double grey",
+                      paddingBottom: "10px",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Nomor Sertifikat : {certificate.number}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      textAlign: "center",
+                      margin: "10px 0",
+                      borderBottom: "2px dashed grey",
+                      paddingBottom: "10px",
+                      fontWeight: "600",
+                      fontSize: "8px",
+                    }}
+                  >
+                    (Lokasi Sertifikat )
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Provinsi : {certificate.province}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Kabupaten/Kota : {certificate.address}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Kecamatan : {certificate.city}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Desa/Kelurahan : {certificate.address}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      textAlign: "center",
+                      margin: "20px 0",
+                      borderBottom: "2px dashed grey",
+                      borderTop: "2px dashed grey",
+                      padding: "10px 0",
+                      fontWeight: "600",
+                      fontSize: "8px",
+                    }}
+                  >
+                    (Informasi Properti)
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Nomor Tanah : {certificate.length}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Luas Tanah : {certificate.area}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      textAlign: "center",
+                      margin: "20px 0",
+                      borderBottom: "2px dashed grey",
+                      borderTop: "2px dashed grey",
+                      padding: "10px 0",
+                      fontWeight: "600",
+                      fontSize: "8px",
+                    }}
+                  >
+                    (Informasi Pemilik dan Catatan)
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Nama Pemilik : {certificate.owner}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Nomor KTP Pemilik : {certificate.nik}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      marginBottom: "20px",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    Tanggal Penerbitan : {certificate.issueDate}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "black",
+                      marginBottom: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingRight: "30px",
+                      borderBottom: "4px double grey",
+                      fontWeight: "500",
+                      fontSize: "5px",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        textAlign: "center",
+                        fontWeight: "500",
+                        fontSize: "5px",
+                      }}
+                    >
+                      Tanda tangan Sertifikat:
+                    </Typography>
+                    <QRCode
+                      value={qrValue}
+                      size={10}
+                      fgColor="grey"
+                      bgColor="transparent"
+                      style={{ marginBottom: "20px" }}
+                    />
+                  </Typography>
+                </Paper>
+              </>
+            );
+          })
+        : "";
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ marginTop: "110px" }}>
       {isLoggedIn ? (
@@ -72,8 +284,8 @@ export default function ProfileUser() {
           <Box mt={6} display="flex" justifyContent="space-between">
             <Box flex={1} pr={2}>
               <Paper
-                elevation={3}
-                sx={{ padding: 4, borderRadius: 12, background: "#f5f5f5" }}
+                elevation={0}
+                sx={{ padding: 4, borderRadius: 5, background: "#f5f5f5" }}
               >
                 <Typography variant="h4" color="primary">
                   Profile
@@ -103,17 +315,16 @@ export default function ProfileUser() {
             </Box>
             <Box flex={1} pl={2} sx={{ width: "60%" }}>
               <Paper
-                elevation={3}
-                sx={{ padding: 4, borderRadius: 12, background: "#f5f5f5" }}
+                elevation={0}
+                sx={{ padding: 4, borderRadius: 5, background: "#f5f5f5" }}
               >
                 <Typography variant="h4" color="primary">
                   Private Key
                 </Typography>
                 <Box
-                  border="1px solid #ccc"
                   padding={2}
                   borderRadius={8}
-                  bgcolor="white"
+                  bgcolor="rgba(0, 0,0, 0.05)"
                   sx={{
                     overflowX: "auto",
                     "::-webkit-scrollbar": {
@@ -121,7 +332,12 @@ export default function ProfileUser() {
                     },
                   }}
                 >
-                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                  <Typography
+                    sx={{
+                      whiteSpace: "pre-wrap",
+                      fontSize: "12px",
+                    }}
+                  >
                     {user.private_key.replace(/\r?\n|\r/g, "\\r\\n").trim()}
                   </Typography>
                 </Box>
@@ -134,6 +350,8 @@ export default function ProfileUser() {
             sx={{
               overflowY: "auto",
               height: "250px",
+              display: "flex",
+              gap: "20px",
               "::-webkit-scrollbar": {
                 display: "none",
               },
@@ -145,6 +363,11 @@ export default function ProfileUser() {
               sx={{
                 padding: 4,
                 background: "#f5f5f5",
+                width: "69%",
+                overflowY: "auto",
+                "::-webkit-scrollbar": {
+                  display: "none",
+                },
               }}
             >
               <Typography variant="h4" color="primary">
@@ -182,6 +405,34 @@ export default function ProfileUser() {
                   )}
                 </Table>
               </TableContainer>
+            </Paper>
+
+            <Paper
+              elevation={3}
+              sx={{
+                padding: 4,
+                background: "#f5f5f5",
+                overflowY: "auto",
+                width: "30%",
+                "::-webkit-scrollbar": {
+                  display: "none",
+                },
+              }}
+            >
+              <Link
+                onClick={handleSeeCertificateLink}
+                color="primary"
+                style={{
+                  textDecoration: "none",
+                  textTransform: "capitalize",
+                  fontSize: "32px",
+                }}
+              >
+                Your Certificate
+              </Link>
+              <Box sx={{ display: "flex", gap: "10px" }}>
+                {renderCertificates()}
+              </Box>
             </Paper>
           </Box>
         </>

@@ -26,6 +26,7 @@ app.post("/api/auth/otp/verify", auth.verifyOTP);
 app.get("/api/auth/history", middleware.authenticate, auth.getLoginHistory);
 app.get("/api/auth/me", middleware.authenticate, auth.currentUser);
 app.delete("/api/history/:id", middleware.authenticate, auth.logout);
+app.get("/api/user/filter?", auth.filterUser);
 
 // certificate api
 app.post(
@@ -34,7 +35,7 @@ app.post(
   certificateController.generateCertificate
 );
 app.put(
-  "/api/certificates/transfer/owner",
+  "/api/certificates/transfer-owner/:number",
   middleware.authenticate,
   certificateController.transferCertificateOwnership
 );
@@ -44,7 +45,13 @@ app.get(
   certificateController.findCertificateByNumber
 );
 app.get(
+  "/api/v1/certificates/:number",
+  middleware.authenticate,
+  certificateController.findCertificatesByNumber
+);
+app.get(
   "/api/certificates/owner/history/:number",
+  middleware.authenticate,
   certificateController.getOwnershipHistory
 );
 app.get(
@@ -52,6 +59,13 @@ app.get(
   middleware.authenticate,
   certificateController.getCertificateByUserId
 );
+app.get(
+  "/v1/api/certificates/:hash",
+  middleware.authenticate,
+  certificateController.getCertificateByHash
+);
+
+app.get("/v1/api/certificates-all", certificateController.getAllCertificates);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);

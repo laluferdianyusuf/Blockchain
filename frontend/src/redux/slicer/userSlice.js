@@ -12,6 +12,7 @@ export const register = createAsyncThunk("auth/register", async (user) => {
         Accept: "application/json",
       },
     });
+    console.log(response);
     return response.data;
   } catch (error) {
     return error;
@@ -51,15 +52,29 @@ export const getUsers = createAsyncThunk("auth/user/me", async () => {
   }
 });
 
+export const filterUsers = createAsyncThunk(
+  "user/filter",
+  async (filterParams, thunkAPI) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${url_api}/api/user/filter`, {
+        params: filterParams,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+);
+
 const initialState = {
-  users: {
-    loading: false,
-    error: null,
-    data: {
-      user: [],
-      loginHistory: {},
-    },
-  },
+  users: {},
+  filteredUsers: {},
 };
 
 const userSlice = createSlice({
@@ -69,48 +84,35 @@ const userSlice = createSlice({
   extraReducers: (builder) => {
     // register
     builder
-      .addCase(register.pending, (state) => {
-        state.users.loading = true;
-        state.users.error = null;
-      })
+      .addCase(register.pending, (state) => {})
       .addCase(register.fulfilled, (state, action) => {
-        state.users.loading = false;
-        state.users.data.user = action.payload;
+        state.users = action.payload;
       })
-      .addCase(register.rejected, (state, action) => {
-        state.users.loading = false;
-        state.users.error = action.error.message;
-      });
+      .addCase(register.rejected, (state, action) => {});
 
     // login
     builder
-      .addCase(login.pending, (state) => {
-        state.users.loading = true;
-        state.users.error = null;
-      })
+      .addCase(login.pending, (state) => {})
       .addCase(login.fulfilled, (state, action) => {
-        state.users.loading = false;
-        state.users.data.user = action.payload;
+        state.users = action.payload;
       })
-      .addCase(login.rejected, (state, action) => {
-        state.users.loading = false;
-        state.users.error = action.error.message;
-      });
+      .addCase(login.rejected, (state, action) => {});
 
     // get user
     builder
-      .addCase(getUsers.pending, (state) => {
-        state.users.loading = true;
-        state.users.error = null;
-      })
+      .addCase(getUsers.pending, (state) => {})
       .addCase(getUsers.fulfilled, (state, action) => {
-        state.users.loading = false;
-        state.users.data.user = action.payload;
+        state.users = action.payload;
       })
-      .addCase(getUsers.rejected, (state, action) => {
-        state.users.loading = false;
-        state.users.error = action.error.message;
-      });
+      .addCase(getUsers.rejected, (state, action) => {});
+
+    // Filter user
+    builder
+      .addCase(filterUsers.pending, (state) => {})
+      .addCase(filterUsers.fulfilled, (state, action) => {
+        state.filteredUsers = action.payload;
+      })
+      .addCase(filterUsers.rejected, (state, action) => {});
   },
 });
 

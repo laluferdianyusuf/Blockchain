@@ -25,9 +25,9 @@ class LoginHistoryRepository {
     }
   }
 
-  static async getAllLoginHistory() {
+  static async getAllLoginHistory({ userId }) {
     try {
-      const loginHistory = await LoginHistoryModel.find();
+      const loginHistory = await LoginHistoryModel.find({ userId });
       return loginHistory;
     } catch (error) {
       throw error;

@@ -1,15 +1,15 @@
 import React from "react";
 import Navbar from "../../components/Navbar";
-import OwnerHistory from "../../components/History";
+import Transfer from "../../components/Transfer";
 
-export default function History() {
+export default function TransferOwnership() {
   return (
     <>
       <div>
-        <Navbar />{" "}
+        <Navbar />
       </div>
       <div>
-        <OwnerHistory />{" "}
+        <Transfer />
       </div>
     </>
   );
