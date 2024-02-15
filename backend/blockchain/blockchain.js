@@ -1,6 +1,7 @@
 const { SHA256 } = require("crypto-js");
 const fs = require("fs");
 const crypto = require("crypto");
+const process = require("process");
 
 class Block {
   constructor(index, previousHash, timestamp, data, nonce, hash, difficulty) {
@@ -89,10 +90,17 @@ const mineBlock = (index, previousHash, timestamp, data, difficulty) => {
   let hash = "";
   const targetPrefix = "0".repeat(difficulty);
 
+  const startMemoryUsage = process.memoryUsage().heapUsed;
+
   while (!hash.startsWith(targetPrefix)) {
     nonce++;
     hash = calculateHash(index, previousHash, timestamp, data, nonce);
   }
+
+  const endMemoryUsage = process.memoryUsage().heapUsed;
+  const memoryUsage = endMemoryUsage - startMemoryUsage;
+
+  console.log(`Memory usage during mining: ${memoryUsage} bytes`);
 
   return { nonce, hash };
 };
